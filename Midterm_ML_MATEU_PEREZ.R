@@ -14,3 +14,5 @@ dataDir<-glue(workingDir,"/data")
 plotDir<-glue(workingDir,"/plots")
 codeDir<-glue(workingDir,"/code")
 setwd(workingDir)
+
+##this is the test for the first commit
