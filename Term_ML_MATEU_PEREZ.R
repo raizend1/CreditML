@@ -68,7 +68,7 @@ t$Freq[t$SEX == "Female" & t$default.payment.next.month == "Default"] / sum(t$Fr
 
 # As we see, the proportion of males with default payment is 0.241, and the proportion of females is 0.207.
 # Indeed, males have a higher probability of default payment.
-hasd
+
 
 #*****************************************************************************************#
 #               initial exploration of education                                          #
