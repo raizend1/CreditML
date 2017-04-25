@@ -33,6 +33,8 @@ dim(credit)
 
 #### Exploratory Data Analysis Cesc ####
 # Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
+library(ggplot2)
+
 credit.sub <- credit[,c(3,4,5,6,25)]
 
 credit.sub$SEX <- as.factor(credit.sub$SEX)
@@ -49,6 +51,14 @@ credit.sub$MARRIAGE <- as.factor(credit.sub$MARRIAGE)
 credit.sub$default.payment.next.month <- as.factor(credit.sub$default.payment.next.month)
 
 str(credit.sub)
+
+# How many 0's and 1's do we have?
+ggplot(data = credit, mapping = aes(x = default.payment.next.month)) + 
+  geom_bar() 
+
+#
+
+
 
 
 
