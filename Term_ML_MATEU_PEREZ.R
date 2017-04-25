@@ -43,8 +43,15 @@ levels(credit$default.payment.next.month) <- c("Not default", "Default")
 
 str(credit)
 
+<<<<<<< HEAD
 # refer to readme to check all the data details. Data are categorical and continous. We will predict 
 # default.payment.next.month as a binary yes (1) no (0)
+=======
+levels(credit.sub$SEX) <- c("Male", "Female")
+levels(credit.sub$EDUCATION) <- c("Unknown1", "Graduate", "University", "High School", "Unknown2", "Unknown3", "Unknown4")
+levels(credit.sub$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
+levels(credit.sub$default.payment.next.month) <- c("Not default", "Default")
+>>>>>>> 521dd2c34ee8a8ada95464c52a0c1da9dbb8109b
 
 #### Exploratory Data Analysis Cesc ####
 # Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
@@ -52,10 +59,39 @@ library(ggplot2)
 
 str(credit)
 
-# How many 0's and 1's do we have?
-ggplot(data = credit, mapping = aes(x = default.payment.next.month)) + 
-  geom_bar() 
+### Sex Exploratory Analysis ###
+# How many males and females do we have?
+ggplot(data = credit.sub, mapping = aes(x = SEX)) + 
+  geom_bar()
 
+# We have a lot more females than males in our dataset.
+
+# How many Default's and Not-Defaults's do we have for each sex?
+ggplot(data = credit.sub, mapping = aes(x = default.payment.next.month, ..count..)) + 
+  geom_bar(mapping = aes(fill = SEX), position = "dodge") 
+
+# It seems that females tend to have less default payments, 
+# lets compute the exact proportion to see if there is some kind of bias.
+(t <- as.data.frame(with(data = credit.sub, table(SEX, default.payment.next.month))))
+t$Freq[t$SEX == "Male" & t$default.payment.next.month == "Default"] / sum(t$Freq[t$SEX == "Male"])
+t$Freq[t$SEX == "Female" & t$default.payment.next.month == "Default"] / sum(t$Freq[t$SEX == "Female"])
+
+# As we see, the proportion of males with default payment is 0.241, and the proportion of females is 0.207.
+# Indeed, males have a higher probability of default payment.
+
+<<<<<<< HEAD
+=======
+
+
+
+
+
+
+# refer to readme to check all the data details. Data are categorical and continous. We will predict 
+# default.payment.next.month as a binary yes (1) no (0)
+
+#plot(credit)
+>>>>>>> 521dd2c34ee8a8ada95464c52a0c1da9dbb8109b
 
 #*******************************************************************************************************
 #       initial exploration of education
