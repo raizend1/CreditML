@@ -33,6 +33,9 @@ str(default.credit.card.data)
 # default.payment.next.month as a binary yes (1) no (0)
 #plot(default.credit.card.data)
 
+#change some data to categorical
+tor.nodes[,grepl("Flag...", names(tor.nodes))] <- lapply(tor.nodes[, flags.indexes],as.factor)
+
 # first check N/A values
 which(is.na(default.credit.card.data),arr.ind=TRUE) #there are none
 
