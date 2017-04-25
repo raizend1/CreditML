@@ -70,9 +70,9 @@ t$Freq[t$SEX == "Female" & t$default.payment.next.month == "Default"] / sum(t$Fr
 # Indeed, males have a higher probability of default payment.
 
 
-#*******************************************************************************************************
-#       initial exploration of education
-#*******************************************************************************************************
+#*****************************************************************************************#
+#               initial exploration of education                                          #
+#*****************************************************************************************#
 # a count of all the values to get an initial idea
 ggplot(credit, aes(x=EDUCATION)) +
   geom_bar(position="dodge", colour="black") + 
@@ -81,8 +81,8 @@ ggplot(credit, aes(x=EDUCATION)) +
 # also university is most present in this data
 
 # a count check of all the education respect to default payment
-ggplot(credit, aes(x=default.payment.next.month, y=EDUCATION)) +
-  geom_bar(position="dodge")
+ggplot(credit, aes(x=default.payment.next.month)) +
+  geom_bar(mapping = aes(fill = EDUCATION),position="dodge")
   geom_text(stat='count',aes(label=..count..),vjust=-1)
 
 # first check N/A values
