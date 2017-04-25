@@ -32,7 +32,7 @@ str(credit)
 dim(credit)
 
 # Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
-factor.indexes <- which(names(credit)%in%c("SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
+factor.indexes <- which(names(credit)%in%c("PAY_0","PAY_2","PAY_3","PAY_4","PAY_5","PAY_6","SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
 credit[,factor.indexes] <- lapply(credit[,factor.indexes],as.factor)
 
 # Rename categorical values for better unsderstanding
@@ -47,6 +47,9 @@ summary(credit)
 #***************************************************************************#
 #               Initial Exploratory analysis                                #
 #***************************************************************************#
+# remove unnecesary data: ID
+credit<- credit[,-1]
+factor.indexes<-factor.indexes-1 # update indexes of the factors
 
 # Are there any zero variance predictors?   
 library("caret")
@@ -56,13 +59,26 @@ x[x[,"zeroVar"] > 0, ]
 x[x[,"zeroVar"] + x[,"nzv"] > 0, ] 
 #there are none, we can conclude that all the predictors are relevant for the moment
 
-#Normalize the data
-
 # First check N/A values
 which(is.na(credit),arr.ind=TRUE) #there are none
 
-# remove unnecesary data: ID
-credit<- credit[,-1]
+# check if data is normal
+draw.barplot<-function(input.data){
+  l.data<-length(input.data)
+  rounded<-round(sqrt(l.data),0)
+  par(mfrow=c(1, 1))
+  for(i in 1:l.data){
+     plot(credit[,i],main = names(input.data)[i])
+  }
+}
+
+ggplot(data = credit, mapping = aes(x = AGE, ..count..)) + 
+  geom_bar(mapping = aes(fill = AGE), position = "dodge") 
+
+ggplot(data = credit, mapping = aes(x = credit[,-factor.indexes],..count..)) + 
+  geom_bar()
+
+#Normalize the data
 
 # subset of payment history to check some interesting data - maybe
 data.sub.payment.history<-credit[,c(7:12)]
