@@ -28,6 +28,10 @@ setwd(codeDir)
 # read initial data
 data.path <- glue(dataDir,"/","default_of_credit_card_clients.csv")
 credit <- read.table(data.path, header = TRUE,sep = ";")
+# here we change some columns to categorical type
+factor.cols <- which(names(credit)%in%c("SEX","EDUCATION","MARRIAGE")) 
+
+credit[,factor.cols] <- lapply(credit[,factor.cols],as.factor)
 str(credit)
 
 
@@ -38,10 +42,7 @@ str(credit)
 # refer to readme to check all the data details. Data are categorical and continous. We will predict 
 # default.payment.next.month as a binary yes (1) no (0)
 
-#plot(credit)
-
-#change some data to categorical
-tor.nodes[,grepl("Flag...", names(tor.nodes))] <- lapply(tor.nodes[, flags.indexes],as.factor)
+plot(credit)
 
 # first check N/A values
 which(is.na(credit),arr.ind=TRUE) #there are none
