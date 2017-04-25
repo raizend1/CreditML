@@ -51,24 +51,24 @@ str(credit)
 
 ### Sex Exploratory Analysis ###
 # How many males and females do we have?
-ggplot(data = credit.sub, mapping = aes(x = SEX)) + 
+ggplot(data = credit, mapping = aes(x = SEX)) + 
   geom_bar()
 
 # We have a lot more females than males in our dataset.
 
 # How many Default's and Not-Defaults's do we have for each sex?
-ggplot(data = credit.sub, mapping = aes(x = default.payment.next.month, ..count..)) + 
+ggplot(data = credit, mapping = aes(x = default.payment.next.month, ..count..)) + 
   geom_bar(mapping = aes(fill = SEX), position = "dodge") 
 
 # It seems that females tend to have less default payments, 
 # lets compute the exact proportion to see if there is some kind of bias.
-(t <- as.data.frame(with(data = credit.sub, table(SEX, default.payment.next.month))))
+(t <- as.data.frame(with(data = credit, table(SEX, default.payment.next.month))))
 t$Freq[t$SEX == "Male" & t$default.payment.next.month == "Default"] / sum(t$Freq[t$SEX == "Male"])
 t$Freq[t$SEX == "Female" & t$default.payment.next.month == "Default"] / sum(t$Freq[t$SEX == "Female"])
 
 # As we see, the proportion of males with default payment is 0.241, and the proportion of females is 0.207.
 # Indeed, males have a higher probability of default payment.
-
+hasd
 
 #*******************************************************************************************************
 #       initial exploration of education
