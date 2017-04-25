@@ -28,21 +28,38 @@ setwd(codeDir)
 # read initial data
 data.path <- glue(dataDir,"/","default_of_credit_card_clients.csv")
 credit <- read.table(data.path, header = TRUE,sep = ";")
-# here we change some columns to categorical type
-factor.cols <- which(names(credit)%in%c("SEX","EDUCATION","MARRIAGE")) 
-
-credit[,factor.cols] <- lapply(credit[,factor.cols],as.factor)
 str(credit)
-
+dim(credit)
 
 #### Exploratory Data Analysis Cesc ####
 # Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
+credit.sub <- credit[,c(3,4,5,6,25)]
+
+credit.sub$SEX <- as.factor(credit.sub$SEX)
+credit.sub$EDUCATION <- as.factor(credit.sub$EDUCATION)
+credit.sub$MARRIAGE <- as.factor(credit.sub$MARRIAGE)
+credit.sub$default.payment.next.month <- as.factor(credit.sub$default.payment.next.month)
+
+levels(credit.sub$SEX) <- c("Male", "Female")
+levels(credit.sub$EDUCATION) <- c("Unknown1", "Graduate", "University", "High School", "Unknown2", "Unknown3", "Unknown4")
+levels(credit.sub$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
+
+credit.sub$EDUCATION <- as.factor(credit.sub$EDUCATION)
+credit.sub$MARRIAGE <- as.factor(credit.sub$MARRIAGE)
+credit.sub$default.payment.next.month <- as.factor(credit.sub$default.payment.next.month)
+
+str(credit.sub)
+
+
 
 
 # refer to readme to check all the data details. Data are categorical and continous. We will predict 
 # default.payment.next.month as a binary yes (1) no (0)
 
-plot(credit)
+#plot(credit)
+
+#change some data to categorical
+tor.nodes[,grepl("Flag...", names(tor.nodes))] <- lapply(tor.nodes[, flags.indexes],as.factor)
 
 # first check N/A values
 which(is.na(credit),arr.ind=TRUE) #there are none
