@@ -32,8 +32,8 @@ str(credit)
 dim(credit)
 
 # Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
-factor.cols <- which(names(credit)%in%c("SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
-credit[,factor.cols] <- lapply(credit[,factor.cols],as.factor)
+factor.indexes <- which(names(credit)%in%c("SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
+credit[,factor.indexes] <- lapply(credit[,factor.indexes],as.factor)
 
 # Rename categorical values for better unsderstanding
 levels(credit$SEX) <- c("Male", "Female")
@@ -42,6 +42,30 @@ levels(credit$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
 levels(credit$default.payment.next.month) <- c("Not default", "Default")
 
 str(credit)
+summary(credit)
+
+#***************************************************************************#
+#               Initial Exploratory analysis                                #
+#***************************************************************************#
+
+# Are there any zero variance predictors?   
+library("caret")
+x = nearZeroVar(credit, saveMetrics = TRUE)
+str(x)
+x[x[,"zeroVar"] > 0, ] 
+x[x[,"zeroVar"] + x[,"nzv"] > 0, ] 
+#there are none, we can conclude that all the predictors are relevant for the moment
+
+#Normalize the data
+
+# First check N/A values
+which(is.na(credit),arr.ind=TRUE) #there are none
+
+# remove unnecesary data: ID
+credit<- credit[,-1]
+
+# subset of payment history to check some interesting data - maybe
+data.sub.payment.history<-credit[,c(7:12)]
 
 #### Exploratory Data Analysis Cesc ####
 # Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
@@ -68,7 +92,6 @@ t$Freq[t$SEX == "Female" & t$default.payment.next.month == "Default"] / sum(t$Fr
 
 # As we see, the proportion of males with default payment is 0.241, and the proportion of females is 0.207.
 # Indeed, males have a higher probability of default payment.
-hasd
 
 #*****************************************************************************************#
 #               initial exploration of education                                          #
@@ -85,14 +108,19 @@ ggplot(credit, aes(x=default.payment.next.month)) +
   geom_bar(mapping = aes(fill = EDUCATION),position="dodge")
   geom_text(stat='count',aes(label=..count..),vjust=-1)
 
-# first check N/A values
-which(is.na(credit),arr.ind=TRUE) #there are none
+#*****************************************************************************************#
+#                              Initial model assumptions                                  #
+#*****************************************************************************************#
+#check correlation
+cor(credit$EDUCATION,credit$default.payment.next.month)
 
-# subset of payment history to check some interesting data - maybe
-data.sub.payment.history<-credit[,c(7:12)]
+factor.indexes <- head(factor.indexes, -1)
+m1<-lm(default.payment.next.month~.,data=credit[,-factor.indexes])
+summary(m1)
 
-# reduce dimensionality - apply PCA
- 
+par(mfrow=c(2,2))
+plot(m1)
+
 # execute svm -  why svm? answer this on the document
 require("kernlab")
 n.rows <- nrow(credit)
