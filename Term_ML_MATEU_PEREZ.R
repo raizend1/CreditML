@@ -31,45 +31,46 @@ credit <- read.table(data.path, header = TRUE,sep = ";")
 str(credit)
 dim(credit)
 
+# Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
+factor.cols <- which(names(credit)%in%c("SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
+credit[,factor.cols] <- lapply(credit[,factor.cols],as.factor)
+
+# Rename categorical values for better unsderstanding
+levels(credit$SEX) <- c("Male", "Female")
+levels(credit$EDUCATION) <- c("Unknown1", "Graduate", "University", "High School", "Unknown2", "Unknown3", "Unknown4")
+levels(credit$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
+levels(credit$default.payment.next.month) <- c("Not default", "Default")
+
+str(credit)
+
+# refer to readme to check all the data details. Data are categorical and continous. We will predict 
+# default.payment.next.month as a binary yes (1) no (0)
+
 #### Exploratory Data Analysis Cesc ####
 # Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
 library(ggplot2)
 
-credit.sub <- credit[,c(3,4,5,6,25)]
-
-credit.sub$SEX <- as.factor(credit.sub$SEX)
-credit.sub$EDUCATION <- as.factor(credit.sub$EDUCATION)
-credit.sub$MARRIAGE <- as.factor(credit.sub$MARRIAGE)
-credit.sub$default.payment.next.month <- as.factor(credit.sub$default.payment.next.month)
-
-levels(credit.sub$SEX) <- c("Male", "Female")
-levels(credit.sub$EDUCATION) <- c("Unknown1", "Graduate", "University", "High School", "Unknown2", "Unknown3", "Unknown4")
-levels(credit.sub$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
-
-credit.sub$EDUCATION <- as.factor(credit.sub$EDUCATION)
-credit.sub$MARRIAGE <- as.factor(credit.sub$MARRIAGE)
-credit.sub$default.payment.next.month <- as.factor(credit.sub$default.payment.next.month)
-
-str(credit.sub)
+str(credit)
 
 # How many 0's and 1's do we have?
 ggplot(data = credit, mapping = aes(x = default.payment.next.month)) + 
   geom_bar() 
 
-#
 
+#*******************************************************************************************************
+#       initial exploration of education
+#*******************************************************************************************************
+# a count of all the values to get an initial idea
+ggplot(credit, aes(x=EDUCATION)) +
+  geom_bar(position="dodge", colour="black") + 
+  geom_text(stat='count',aes(label=..count..),vjust=-1)
+# we can see that the 4 "unknown" values are very few, comparing them with the others
+# also university is most present in this data
 
-
-
-
-
-# refer to readme to check all the data details. Data are categorical and continous. We will predict 
-# default.payment.next.month as a binary yes (1) no (0)
-
-#plot(credit)
-
-#change some data to categorical
-tor.nodes[,grepl("Flag...", names(tor.nodes))] <- lapply(tor.nodes[, flags.indexes],as.factor)
+# a count check of all the education respect to default payment
+ggplot(credit, aes(x=default.payment.next.month, y=EDUCATION)) +
+  geom_bar(position="dodge")
+  geom_text(stat='count',aes(label=..count..),vjust=-1)
 
 # first check N/A values
 which(is.na(credit),arr.ind=TRUE) #there are none
