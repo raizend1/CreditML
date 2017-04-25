@@ -72,6 +72,8 @@ draw.barplot<-function(input.data){
   }
 }
 
+draw.barplot(credit[,-factor.indexes])
+
 ggplot(data = credit, mapping = aes(x = AGE, ..count..)) + 
   geom_bar(mapping = aes(fill = AGE), position = "dodge") 
 
