@@ -30,6 +30,11 @@ data.path <- glue(dataDir,"/","default_of_credit_card_clients.csv")
 credit <- read.table(data.path, header = TRUE,sep = ";")
 str(credit)
 
+
+#### Exploratory Data Analysis Cesc ####
+# Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
+
+
 # refer to readme to check all the data details. Data are categorical and continous. We will predict 
 # default.payment.next.month as a binary yes (1) no (0)
 
