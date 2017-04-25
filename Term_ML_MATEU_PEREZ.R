@@ -21,12 +21,8 @@ set.seed(123)
 #utility function
 glue<-function(...){paste(...,sep="")}
 
-#get absolute paths to work
-path <- "D:/Documents/MIRI/Semestre 3/Machine Learning/TermProject"
-#path <-"E:/Documents/Mis Documentos/MIRI/Semestre 3/Machine Learning/TermProject"
-dataDir<-glue(path,"/data")
-plotDir<-glue(path,"/plots")
-codeDir<-glue(path,"/code")
+source("workingDir.R")
+
 setwd(codeDir)
 
 # read initial data
@@ -56,16 +52,22 @@ n.length <-ncol(default.credit.card.data)
 
 # get just one third for validation, the rest to train
 default.credit.card.data.test <- default.credit.card.data[sample(1:n.rows,size = floor(n.rows*0.3),replace = FALSE),]
-default.credit.card.train <- default.credit.card.data[which(default.credit.card.data %ni% default.credit.card.data.test),]
+default.credit.card.train <- subset(default.credit.card.data, !(ID %in% default.credit.card.data.test$ID))
 
 #array for the best parameters
 c.best <- c()
 epsilon.best <- c()
+gamma.best<-c()
 polynomial.degree.best<-c()
 
 #array for computation time
 compu.time<- c()
 
+# use svm
+library(e1071)
+model2 <- svm (default.credit.card.train[,-25],default.credit.card.train[,25],epsilon=0.01,gamma=200, C=100)
+lines(default.credit.card.train[,-25],predict(model2,default.credit.card.train[,-25]),col="green")
+default.credit.card.svm<-ksvm(default.credit.card.train[,-25],default.credit.card.train[,25],epsilon=0.01, C=100)
 
 
 
