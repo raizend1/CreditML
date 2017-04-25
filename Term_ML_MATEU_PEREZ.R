@@ -43,16 +43,6 @@ levels(credit$default.payment.next.month) <- c("Not default", "Default")
 
 str(credit)
 
-<<<<<<< HEAD
-# refer to readme to check all the data details. Data are categorical and continous. We will predict 
-# default.payment.next.month as a binary yes (1) no (0)
-=======
-levels(credit.sub$SEX) <- c("Male", "Female")
-levels(credit.sub$EDUCATION) <- c("Unknown1", "Graduate", "University", "High School", "Unknown2", "Unknown3", "Unknown4")
-levels(credit.sub$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
-levels(credit.sub$default.payment.next.month) <- c("Not default", "Default")
->>>>>>> 521dd2c34ee8a8ada95464c52a0c1da9dbb8109b
-
 #### Exploratory Data Analysis Cesc ####
 # Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
 library(ggplot2)
@@ -79,19 +69,6 @@ t$Freq[t$SEX == "Female" & t$default.payment.next.month == "Default"] / sum(t$Fr
 # As we see, the proportion of males with default payment is 0.241, and the proportion of females is 0.207.
 # Indeed, males have a higher probability of default payment.
 
-<<<<<<< HEAD
-=======
-
-
-
-
-
-
-# refer to readme to check all the data details. Data are categorical and continous. We will predict 
-# default.payment.next.month as a binary yes (1) no (0)
-
-#plot(credit)
->>>>>>> 521dd2c34ee8a8ada95464c52a0c1da9dbb8109b
 
 #*******************************************************************************************************
 #       initial exploration of education
