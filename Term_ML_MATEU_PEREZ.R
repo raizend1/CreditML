@@ -32,8 +32,8 @@ str(credit)
 dim(credit)
 
 # Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
-factor.cols <- which(names(credit)%in%c("SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
-credit[,factor.cols] <- lapply(credit[,factor.cols],as.factor)
+factor.indexes <- which(names(credit)%in%c("PAY_0","PAY_2","PAY_3","PAY_4","PAY_5","PAY_6","SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
+credit[,factor.indexes] <- lapply(credit[,factor.indexes],as.factor)
 
 # Rename categorical values for better unsderstanding
 levels(credit$SEX) <- c("Male", "Female")
@@ -42,6 +42,48 @@ levels(credit$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
 levels(credit$default.payment.next.month) <- c("Not default", "Default")
 
 str(credit)
+summary(credit)
+
+#***************************************************************************#
+#               Initial Exploratory analysis                                #
+#***************************************************************************#
+# remove unnecesary data: ID
+credit<- credit[,-1]
+factor.indexes<-factor.indexes-1 # update indexes of the factors
+
+# Are there any zero variance predictors?   
+library("caret")
+x = nearZeroVar(credit, saveMetrics = TRUE)
+str(x)
+x[x[,"zeroVar"] > 0, ] 
+x[x[,"zeroVar"] + x[,"nzv"] > 0, ] 
+#there are none, we can conclude that all the predictors are relevant for the moment
+
+# First check N/A values
+which(is.na(credit),arr.ind=TRUE) #there are none
+
+# check if data is normal
+draw.barplot<-function(input.data){
+  l.data<-length(input.data)
+  rounded<-round(sqrt(l.data),0)
+  par(mfrow=c(1, 1))
+  for(i in 1:l.data){
+     plot(credit[,i],main = names(input.data)[i])
+  }
+}
+
+draw.barplot(credit[,-factor.indexes])
+
+ggplot(data = credit, mapping = aes(x = AGE, ..count..)) + 
+  geom_bar(mapping = aes(fill = AGE), position = "dodge") 
+
+ggplot(data = credit, mapping = aes(x = credit[,-factor.indexes],..count..)) + 
+  geom_bar()
+
+#Normalize the data
+
+# subset of payment history to check some interesting data - maybe
+data.sub.payment.history<-credit[,c(7:12)]
 
 #### Exploratory Data Analysis Cesc ####
 # Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
@@ -85,14 +127,19 @@ ggplot(credit, aes(x=default.payment.next.month)) +
   geom_bar(mapping = aes(fill = EDUCATION),position="dodge")
   geom_text(stat='count',aes(label=..count..),vjust=-1)
 
-# first check N/A values
-which(is.na(credit),arr.ind=TRUE) #there are none
+#*****************************************************************************************#
+#                              Initial model assumptions                                  #
+#*****************************************************************************************#
+#check correlation
+cor(credit$EDUCATION,credit$default.payment.next.month)
 
-# subset of payment history to check some interesting data - maybe
-data.sub.payment.history<-credit[,c(7:12)]
+factor.indexes <- head(factor.indexes, -1)
+m1<-lm(default.payment.next.month~.,data=credit[,-factor.indexes])
+summary(m1)
 
-# reduce dimensionality - apply PCA
- 
+par(mfrow=c(2,2))
+plot(m1)
+
 # execute svm -  why svm? answer this on the document
 require("kernlab")
 n.rows <- nrow(credit)
