@@ -101,16 +101,38 @@ for (i in 1:ncol(credit)){
 # para cada variable, perdona. Podemos eliminar una de las dos versiones. Estaría bien intentar describir en todo 
 # momento que es lo que estamos haciendo, así el otro no se vuelve loco cuando ve el código y no tiene que buscarlo).
 
-draw.barplot<-function(input.data){
+
+
+# check distribution of data
+draw.plot<-function(input.data,type){
+  #require(ggplot2)
+  #require(gridExtra)
+
   l.data<-length(input.data)
   rounded<-round(sqrt(l.data),0)
-  par(mfrow=c(1, 1))
-  for(i in 1:l.data){
-     plot(credit[,i],main = names(input.data)[i])
-  }
+  par(mar=c(3,3,2,2))
+  par(mfrow=c(rounded-1, rounded+1))
+  # for(i in 1:l.data){
+  out.plot<-array(dim = l.data)
+  #   eval(parse(text=glue(type,"(input.data[,i],main = names(input.data)[i])")))}
+  switch(type,
+         histogram={for(i in 1:l.data){hist(input.data[,i],main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
+         # histogram={out.plot <- lapply(1:14, function(i) ggplot(data=input.data, aes(input.data[,i])) +
+         #                                 geom_histogram(aes(y =..density..),
+         #                                                breaks=seq(20, 50, by = 2),
+         #                                                col="red",
+         #                                                fill="green",
+         #                                                alpha = .2) +
+         #                                 geom_density(col=i) +
+         #                                 labs(title=names(input.data)[i],x=element_blank()))},
+         plot={for(i in 1:l.data){plot(input.data[,i],main = names(input.data)[i])}},
+         stop("Valid plot types are 'histogram', 'plot'"))
+  #marrangeGrob(input.data, nrow=rounded, ncol=rounded)
 }
 
-draw.barplot(credit[,-factor.indexes])
+#most of the data is not normal, have some very high skewed values, also the scales are radicall different
+
+draw.plot(credit[,-factor.indexes],"histogram")
 
 ggplot(data = credit, mapping = aes(x = AGE, ..count..)) + 
   geom_bar(mapping = aes(fill = AGE), position = "dodge") 
