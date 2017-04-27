@@ -90,7 +90,9 @@ draw.plot<-function(input.data,type){
 
 #most of the data is not normal, have some very high skewed values, also the scales are radicall different
 
-draw.plot(credit[,-factor.indexes],"histogram")
+credit.continuos<-credit[,-factor.indexes]
+credit.factors<-credit[,factor.indexes]
+draw.plot(credit.continuos,"histogram")
 
 ggplot(data = credit, mapping = aes(x = AGE, ..count..)) + 
   geom_bar(mapping = aes(fill = AGE), position = "dodge") 
