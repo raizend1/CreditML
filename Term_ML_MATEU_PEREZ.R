@@ -12,30 +12,42 @@
 # pacogppl@gmail.com
 #####################################################################################################
 
-#remove old objects for safety resons
+
+#***************************************************************************#
+#                           0. Initialisation                               #
+#***************************************************************************#
+
+# Initialise workspace, remove old objects for safety resons and define a utility function
 rm(list=ls(all=TRUE))
 dev.off()
-
 set.seed(123)
-
-#utility function
 glue<-function(...){paste(...,sep="")}
-
 source("workingDir.R")
-
 setwd(codeDir)
 
-# read initial data
+# Needed libraries
+library(ggplot2)
+
+
+
+#***************************************************************************#
+#               1. Data Loading and some Preprocessing                      #
+#***************************************************************************#
+
+# Read initial data
 data.path <- glue(dataDir,"/","default_of_credit_card_clients.csv")
 credit <- read.table(data.path, header = TRUE,sep = ";")
 str(credit)
 dim(credit)
 
-# Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
-factor.indexes <- which(names(credit)%in%c("PAY_0","PAY_2","PAY_3","PAY_4","PAY_5","PAY_6","SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
-credit[,factor.indexes] <- lapply(credit[,factor.indexes],as.factor)
+# We have a dataset with 30000 rows and 25 variables. All variables are defined as continuous integers,
+# and some of them need to be changed to categorical.
 
-# Rename categorical values for better unsderstanding
+# Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
+factor.indexes <- which(names(credit) %in% c("PAY_0","PAY_2","PAY_3","PAY_4","PAY_5","PAY_6","SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
+credit[,factor.indexes] <- lapply(credit[,factor.indexes], as.factor)
+
+# Rename the levels of the categorical values for better unsderstanding
 levels(credit$SEX) <- c("Male", "Female")
 levels(credit$EDUCATION) <- c("Unknown1", "Graduate", "University", "High School", "Unknown2", "Unknown3", "Unknown4")
 levels(credit$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
@@ -44,28 +56,58 @@ levels(credit$default.payment.next.month) <- c("Not default", "Default")
 str(credit)
 summary(credit)
 
+
 #***************************************************************************#
-#               Initial Exploratory analysis                                #
+#                2. Initial Exploratory Data Analysis (EDA)                 #
 #***************************************************************************#
-# remove unnecesary data: ID
+
+# Remove unnecesary data: ID
 credit<- credit[,-1]
 factor.indexes<-factor.indexes-1 # update indexes of the factors
 
-# Are there any zero variance predictors?   
+# Are there any zero variance predictors? nearZeroVar() diagnoses predictors that have one unique value 
+# (i.e. are zero variance predictors) or predictors that are have both of the following characteristics: 
+# they have very few unique values relative to the number of samples and the ratio of the frequency of the 
+# most common value to the frequency of the second most common value is large.  
 library("caret")
 x = nearZeroVar(credit, saveMetrics = TRUE)
 str(x)
 x[x[,"zeroVar"] > 0, ] 
 x[x[,"zeroVar"] + x[,"nzv"] > 0, ] 
-#there are none, we can conclude that all the predictors are relevant for the moment
+#There are none, we can conclude that all the predictors are relevant for the moment.
 
 # First check N/A values
-which(is.na(credit),arr.ind=TRUE) #there are none
+which(is.na(credit),arr.ind=TRUE) 
+# We can't find any value expressed as 'NA', but we can't know for the moment if there is another type of encoding
+# for the missing values. 
+
+# Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
+# for the categorical ones, a barplot with the distribution within the levels of the variable.
+
+for (i in 1:ncol(credit)){
+  if(is.factor(credit[,i])){
+    print("categorical")
+    g <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
+      geom_bar()
+    print(g)
+  }else{
+    print("continuous")
+    c <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
+      geom_histogram()
+    print(c)
+  }
+}
+# (Note from Cesc: No me había fijado que tu también habías hecho los histogramas y gráficos de distribución
+# para cada variable, perdona. Podemos eliminar una de las dos versiones. Estaría bien intentar describir en todo 
+# momento que es lo que estamos haciendo, así el otro no se vuelve loco cuando ve el código y no tiene que buscarlo).
+
+
 
 # check distribution of data
 draw.plot<-function(input.data,type){
   #require(ggplot2)
   #require(gridExtra)
+
   l.data<-length(input.data)
   rounded<-round(sqrt(l.data),0)
   par(mar=c(3,3,2,2))
@@ -98,36 +140,38 @@ ggplot(data = credit, mapping = aes(x = credit[,-factor.indexes],..count..)) +
 # subset of payment history to check some interesting data - maybe
 data.sub.payment.history<-credit[,c(7:12)]
 
-#### Exploratory Data Analysis Cesc ####
-# Let's work first with just the variables 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month'
-library(ggplot2)
+#***************************************************************************#
+#                             2.1 EDA Sex                                   #
+#***************************************************************************#
 
-str(credit)
+# In this part we are going to analyze SEX variable from the dataset to see if there is anything interesting
+# that gives us more information.
 
-### Sex Exploratory Analysis ###
 # How many males and females do we have?
 ggplot(data = credit, mapping = aes(x = SEX)) + 
-  geom_bar()
+  geom_bar() +
+  geom_text(stat='count',aes(label=..count..),vjust=-1)
 
-# We have a lot more females than males in our dataset.
+# We have 34 % more females than males in our dataset.
 
 # How many Default's and Not-Defaults's do we have for each sex?
 ggplot(data = credit, mapping = aes(x = default.payment.next.month, ..count..)) + 
-  geom_bar(mapping = aes(fill = SEX), position = "dodge") 
+  geom_bar(mapping = aes(fill = SEX), position = "dodge")
 
 # It seems that females tend to have less default payments, 
 # lets compute the exact proportion to see if there is some kind of bias.
-(t <- as.data.frame(with(data = credit, table(SEX, default.payment.next.month))))
-t$Freq[t$SEX == "Male" & t$default.payment.next.month == "Default"] / sum(t$Freq[t$SEX == "Male"])
-t$Freq[t$SEX == "Female" & t$default.payment.next.month == "Default"] / sum(t$Freq[t$SEX == "Female"])
+freq.table <- (with(data = credit, table(SEX, default.payment.next.month)))
+p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
+cbind(freq.table, p.table)
 
-# As we see, the proportion of males with default payment is 0.241, and the proportion of females is 0.207.
-# Indeed, males have a higher probability of default payment.
+# As we see, the proportion of males with default payment is 0.242, and the proportion of females is 0.208.
+# Indeed, males in general have a higher tendency of default payment.
 
 
 #*****************************************************************************************#
-#               initial exploration of education                                          #
+#                                  2.2 EDA Education                                      #
 #*****************************************************************************************#
+
 # a count of all the values to get an initial idea
 ggplot(credit, aes(x=EDUCATION)) +
   geom_bar(position="dodge", colour="black") + 
@@ -137,12 +181,49 @@ ggplot(credit, aes(x=EDUCATION)) +
 
 # a count check of all the education respect to default payment
 ggplot(credit, aes(x=default.payment.next.month)) +
-  geom_bar(mapping = aes(fill = EDUCATION),position="dodge")
+  geom_bar(mapping = aes(fill = EDUCATION),position="dodge") +
   geom_text(stat='count',aes(label=..count..),vjust=-1)
+
+#*****************************************************************************************#
+#                                  2.3 EDA Marriage                                       #
+#*****************************************************************************************#
+
+# In this part we are going to analyze the 'MARRIAGE' variable from the dataset to see if there
+# is anything interesting that gives us more information.
+
+# How are the levels of the variable distributed?
+ggplot(data = credit, mapping = aes(x = MARRIAGE)) + 
+  geom_bar() +
+  geom_text(stat='count',aes(label=..count..),vjust=-1)
+
+# Basically we have 'Married' and 'Single' individuals, here we have the percentages of each type
+round(prop.table(table(credit$MARRIAGE)) * 100, digits = 1)
+
+# How many Default's and Not-Defaults's do we have for each type of marriage?
+ggplot(data = credit, mapping = aes(x = default.payment.next.month, ..count..)) + 
+  geom_bar(mapping = aes(fill = MARRIAGE), position = "dodge")
+
+# Let's compute the exact proportion for each level to see if there is some kind of bias.
+freq.table <- (with(data = credit, table(MARRIAGE, default.payment.next.month)))
+p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
+cbind(freq.table, p.table)
+
+# As we can see, the proportion of 'Married' individuals with default payement is 0.235, while the proportion of 
+# 'Single' is 0.209. 'Married' individuals have a higher tendency of default payement. 'Other' has a very low percentage 
+# of default payment, but we just have 54 individuals, which is not enough data. 'Divorced' has the higher 
+# percentage of default, but again we just have 323 individuals, compared to the +20000 rows that 
+# are either 'Married' or 'Single'.
+
+#*****************************************************************************************#
+#                                  2.4 EDA PCA                                            #
+#*****************************************************************************************#
+
+# Feature extraction/selection
 
 #*****************************************************************************************#
 #                              Initial model assumptions                                  #
 #*****************************************************************************************#
+
 #check correlation
 cor(credit$EDUCATION,credit$default.payment.next.month)
 
