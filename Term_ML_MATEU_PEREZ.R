@@ -76,13 +76,8 @@ draw.plot<-function(input.data,type){
   switch(type,
          histogram={for(i in 1:l.data){hist(input.data[,i],main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
          # histogram={out.plot <- lapply(1:14, function(i) ggplot(data=input.data, aes(input.data[,i])) +
-         #                                 geom_histogram(aes(y =..density..),
-         #                                                breaks=seq(20, 50, by = 2),
-         #                                                col="red",
-         #                                                fill="green",
-         #                                                alpha = .2) +
-         #                                 geom_density(col=i) +
-         #                                 labs(title=names(input.data)[i],x=element_blank()))},
+         #                                 geom_histogram(aes(y =..density..),breaks=seq(20, 50, by = 2),col="red",fill="green",alpha = .2) +
+         #                                 geom_density(col=i) +labs(title=names(input.data)[i],x=element_blank()))},
          plot={for(i in 1:l.data){plot(input.data[,i],main = names(input.data)[i])}},
          stop("Valid plot types are 'histogram', 'plot'"))
   #marrangeGrob(input.data, nrow=rounded, ncol=rounded)
