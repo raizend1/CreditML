@@ -88,19 +88,59 @@ for (i in 1:ncol(credit)){
   if(is.factor(credit[,i])){
     print("categorical")
     g <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
-      geom_bar()
+      geom_bar() + 
+      ggtitle(colnames(credit[i]))
     print(g)
   }else{
     print("continuous")
     c <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
-      geom_histogram()
+      geom_histogram()+
+      ggtitle(colnames(credit[i]))
     print(c)
   }
 }
-# (Note from Cesc: No me había fijado que tu también habías hecho los histogramas y gráficos de distribución
-# para cada variable, perdona. Podemos eliminar una de las dos versiones. Estaría bien intentar describir en todo 
-# momento que es lo que estamos haciendo, así el otro no se vuelve loco cuando ve el código y no tiene que buscarlo).
 
+################# Analysis of the continuous variables ###################
+summary(credit[-factor.indexes])
+
+###### LIMIT_BAL ######
+# Everything seems correct, we have an extreme outlier of an individual with a credit limit of 1.000.000, but it is
+# not impossible, just a lucky rich person :).
+credit[credit$LIMIT_BAL > 900000,]
+ggplot(credit, aes(x = 0, y = LIMIT_BAL)) +
+  geom_boxplot()
+
+ggplot(credit, aes(x = log10(LIMIT_BAL))) +
+  geom_histogram(bins = 15)
+
+###### AGE ######
+# Nothing weird. The mean age of the individuals is 35.49 years.
+ggplot(credit, aes(x = 0, y = AGE)) +
+  geom_boxplot()
+
+###### BILL_AMT(X) ######
+# We see that we have some negative values in the BILL_AMT(X) variables, can this be possible?
+# Let's count how many we have.
+sum = 0
+for(i in 12:17){
+  sum <- sum + sum(credit[,i] < 0)
+}
+print(sum)
+# Cesc: We have 3932 different negative values in the BILL_AMT(X) set of variables. What should
+# we do about them?
+
+###### PAY_AMT(X) ######
+# All the values for PAY_AMT(X) are either 0 or positive, which is correct. However, we observe that the distribution
+# is very skewed, which leads us to apply logarithms. 
+# For example, PAY_AMT1 has a mean of 5664, but its maximum is 873552. We can't know for sure if this is
+# correct. Let's take a look at the histogram and the boxplot
+ggplot(credit, aes(x = 0, y = PAY_AMT1)) +
+  geom_boxplot()
+
+ggplot(credit, aes(x = (PAY_AMT1))) +
+  geom_histogram(bins = 20)
+ggplot(credit, aes(x = log10(PAY_AMT1))) +
+  geom_histogram(bins = 20)
 
 
 # check distribution of data
@@ -223,7 +263,10 @@ cbind(freq.table, p.table)
 #                                  2.4 EDA PCA                                            #
 #*****************************************************************************************#
 
-# Feature extraction/selection
+#*****************************************************************************************#
+#                            3. DERIVATION OF NEW VARIABLES                               #
+#*****************************************************************************************#
+
 
 #*****************************************************************************************#
 #                              Initial model assumptions                                  #
