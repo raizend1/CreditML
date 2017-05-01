@@ -105,8 +105,12 @@ for (i in 1:ncol(credit)){
   }
 }
 
+# define continuous and factor data
+credit.continuos<-credit[,-factor.indexes]
+credit.factors<-credit[,factor.indexes]
+
 ################# Analysis of the continuous variables ###################
-summary(credit[-factor.indexes])
+summary(credit.continuos)
 
 ###### LIMIT_BAL ######
 # Everything seems correct, we have an extreme outlier of an individual with a credit limit of 1.000.000, but it is
@@ -182,28 +186,11 @@ draw.plot<-function(input.data,type){
 
 #most of the data is not normal, have some very high skewed values, also the scales are radicall different
 
-credit.continuos<-credit[,-factor.indexes]
-credit.factors<-credit[,factor.indexes]
-
 # function to norm
 norm.function <- function(x) {(x - min(x, na.rm=TRUE))/((max(x,na.rm=TRUE) - min(x, na.rm=TRUE)))}
 
-# BILL_AMT1<-lapply(credit.continuos[,"BILL_AMT1"],norm.function)
-# hist(log(BILL_AMT1),prob=TRUE)
-# lines(density(log10(BILL_AMT1)),col="blue")
+#outlier detection
 
-# check the distribution of all continuos data
-summary(credit.continuos)
-# BILL_AMT1, BILL_AMT2, BILL_AMT3, BILL_AMT4, BILL_AMT5, BILL_AMT6, PAY_AMT1, PAY_AMT2, PAY_AMT3, PAY_AMT4, PAY_AMT5, PAY_AMT6
-# are pretty skewed, their mean and median are significant different
-
-draw.plot(credit.continuos,"histogram")
-
-ggplot(data = credit, mapping = aes(x = AGE, ..count..)) + 
-  geom_bar(mapping = aes(fill = AGE), position = "dodge") 
-
-ggplot(data = credit, mapping = aes(x = credit[,-factor.indexes],..count..)) + 
-  geom_bar()
 
 #Normalize the data
 
