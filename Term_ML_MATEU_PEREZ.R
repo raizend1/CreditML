@@ -60,7 +60,6 @@ levels(credit$default.payment.next.month) <- c("Not default", "Default")
 str(credit)
 summary(credit)
 
-
 #***************************************************************************#
 #                2. Initial Exploratory Data Analysis (EDA)                 #
 #***************************************************************************#
@@ -138,6 +137,24 @@ print(sum)
 # Cesc: We have 3932 different negative values in the BILL_AMT(X) set of variables. What should
 # we do about them?
 
+# Paco: To deal with negative values, we can sum the minimum value to all the values
+# in the variable, like this
+credit.minimum<-lapply(credit.continuos,min)
+credit.positives<- credit.continuos
+for(i in 1:dim(credit.continuos)[2]){
+  if(credit.minimum[i]<0){
+    credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
+  }
+}
+
+# lapply(credit.positives,min)
+ 
+ggplot(credit.positives, aes(x = 0, y = BILL_AMT1)) +
+  geom_boxplot()
+
+ggplot(credit.positives, aes(x = (BILL_AMT1))) +
+  geom_histogram(bins = 15)
+
 ###### PAY_AMT(X) ######
 # All the values for PAY_AMT(X) are either 0 or positive, which is correct. However, we observe that the distribution
 # is very skewed, which leads us to apply logarithms. 
@@ -165,9 +182,9 @@ draw.plot<-function(input.data,type){
   # for(i in 1:l.data){
   out.plot<-array(dim = l.data)
   #   eval(parse(text=glue(type,"(input.data[,i],main = names(input.data)[i])")))}
-  # Note: some of the values are negative, so log is not an option, needs normalization
+  # Note: some of the values are negative, so in that case the credit with the positive values is used
   switch(type,
-         histogram={for(i in 1:l.data){hist(input.data[,i],main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
+         histogram={for(i in 1:l.data){hist(log(input.data[,i]),main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
          # histogram={out.plot <- lapply(1:14, function(i) ggplot(data=input.data, aes(input.data[,i])) +
          #                                 geom_histogram(aes(y =..density..),breaks=seq(20, 50, by = 2),col="red",fill="green",alpha = .2) +
          #                                 geom_density(col=i) +labs(title=names(input.data)[i],x=element_blank()))},
@@ -178,6 +195,11 @@ draw.plot<-function(input.data,type){
   par(mar= c(5, 4, 4, 2))
   par(mfrow=c(1,1))
 }
+
+#draw the joint plot with all "original" values for continuous data
+draw.plot(credit.continuos, "histogram")
+#draw the joint plot with all positive values for continuous data
+draw.plot(credit.positives, "histogram")
 
 #most of the data is not normal, have some very high skewed values, also the scales are radicall different
 
