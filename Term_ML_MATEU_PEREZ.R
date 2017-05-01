@@ -14,7 +14,7 @@
 
 
 #***************************************************************************#
-#                           0. Initialisation                               #
+#                           0. Initialization                               #
 #***************************************************************************#
 
 # Initialise workspace, remove old objects for safety resons and define a utility function
@@ -27,8 +27,11 @@ setwd(codeDir)
 
 # Needed libraries
 library(ggplot2)
-
-
+library(mice)
+library(kernlab)
+library(class)
+library(e1071)
+library(psych)
 
 #***************************************************************************#
 #               1. Data Loading and some Preprocessing                      #
@@ -39,6 +42,7 @@ data.path <- glue(dataDir,"/","default_of_credit_card_clients.csv")
 credit <- read.table(data.path, header = TRUE,sep = ";")
 str(credit)
 dim(credit)
+# [1] 30000    25
 
 # We have a dataset with 30000 rows and 25 variables. All variables are defined as continuous integers,
 # and some of them need to be changed to categorical.
@@ -78,6 +82,7 @@ x[x[,"zeroVar"] + x[,"nzv"] > 0, ]
 
 # First check N/A values
 which(is.na(credit),arr.ind=TRUE) 
+md.pattern(credit)
 # We can't find any value expressed as 'NA', but we can't know for the moment if there is another type of encoding
 # for the missing values. 
 
@@ -88,20 +93,65 @@ for (i in 1:ncol(credit)){
   if(is.factor(credit[,i])){
     print("categorical")
     g <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
-      geom_bar()
+      geom_bar() + 
+      ggtitle(colnames(credit[i]))
     print(g)
   }else{
     print("continuous")
     c <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
-      geom_histogram()
+      geom_histogram()+
+      ggtitle(colnames(credit[i]))
     print(c)
   }
 }
-# (Note from Cesc: No me había fijado que tu también habías hecho los histogramas y gráficos de distribución
-# para cada variable, perdona. Podemos eliminar una de las dos versiones. Estaría bien intentar describir en todo 
-# momento que es lo que estamos haciendo, así el otro no se vuelve loco cuando ve el código y no tiene que buscarlo).
 
+# define continuous and factor data
+credit.continuos<-credit[,-factor.indexes]
+credit.factors<-credit[,factor.indexes]
 
+################# Analysis of the continuous variables ###################
+summary(credit.continuos)
+
+###### LIMIT_BAL ######
+# Everything seems correct, we have an extreme outlier of an individual with a credit limit of 1.000.000, but it is
+# not impossible, just a lucky rich person :).
+credit[credit$LIMIT_BAL > 900000,]
+ggplot(credit, aes(x = 0, y = LIMIT_BAL)) +
+  geom_boxplot()
+
+ggplot(credit, aes(x = log10(LIMIT_BAL))) +
+  geom_histogram(bins = 15)
+
+###### AGE ######
+# Nothing weird. The mean age of the individuals is 35.49 years.
+ggplot(credit, aes(x = 0, y = AGE)) +
+  geom_boxplot()
+
+###### BILL_AMT(X) ######
+# We see that we have some negative values in the BILL_AMT(X) variables, can this be possible?
+# Let's count how many we have.
+sum = 0
+for(i in 12:17){
+  sum <- sum + sum(credit[,i] < 0)
+}
+print(sum)
+# Cesc: We have 3932 different negative values in the BILL_AMT(X) set of variables. What should
+# we do about them?
+
+###### PAY_AMT(X) ######
+# All the values for PAY_AMT(X) are either 0 or positive, which is correct. However, we observe that the distribution
+# is very skewed, which leads us to apply logarithms. 
+# For example, PAY_AMT1 has a mean of 5664, but its maximum is 873552. We can't know for sure if this is
+# correct. Let's take a look at the histogram and the boxplot
+ggplot(credit, aes(x = 0, y = PAY_AMT1)) +
+  geom_boxplot()
+
+ggplot(credit, aes(x = (PAY_AMT1))) +
+  geom_histogram(bins = 20)
+ggplot(credit, aes(x = log10(PAY_AMT1))) +
+  geom_histogram(bins = 20)
+
+##################################################################################################################################
 
 # check distribution of data
 draw.plot<-function(input.data,type){
@@ -115,6 +165,7 @@ draw.plot<-function(input.data,type){
   # for(i in 1:l.data){
   out.plot<-array(dim = l.data)
   #   eval(parse(text=glue(type,"(input.data[,i],main = names(input.data)[i])")))}
+  # Note: some of the values are negative, so log is not an option, needs normalization
   switch(type,
          histogram={for(i in 1:l.data){hist(input.data[,i],main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
          # histogram={out.plot <- lapply(1:14, function(i) ggplot(data=input.data, aes(input.data[,i])) +
@@ -123,22 +174,27 @@ draw.plot<-function(input.data,type){
          plot={for(i in 1:l.data){plot(input.data[,i],main = names(input.data)[i])}},
          stop("Valid plot types are 'histogram', 'plot'"))
   #marrangeGrob(input.data, nrow=rounded, ncol=rounded)
+  #set values to default
+  par(mar= c(5, 4, 4, 2))
+  par(mfrow=c(1,1))
 }
 
 #most of the data is not normal, have some very high skewed values, also the scales are radicall different
 
-draw.plot(credit[,-factor.indexes],"histogram")
+# function to norm
+norm.function <- function(x) {(x - min(x, na.rm=TRUE))/((max(x,na.rm=TRUE) - min(x, na.rm=TRUE)))}
 
-ggplot(data = credit, mapping = aes(x = AGE, ..count..)) + 
-  geom_bar(mapping = aes(fill = AGE), position = "dodge") 
+#outlier detection
 
-ggplot(data = credit, mapping = aes(x = credit[,-factor.indexes],..count..)) + 
-  geom_bar()
 
 #Normalize the data
 
 # subset of payment history to check some interesting data - maybe
 data.sub.payment.history<-credit[,c(7:12)]
+
+# description of each continuos index with respect to default payment
+describeBy(credit.continuos, credit$default.payment.next.month)
+pairs(credit.continuos, main = "Default payment pair plot", col = (1:length(levels(credit$default.payment.next.month)))[unclass(credit$default.payment.next.month)])
 
 #***************************************************************************#
 #                             2.1 EDA Sex                                   #
@@ -218,35 +274,28 @@ cbind(freq.table, p.table)
 #                                  2.4 EDA PCA                                            #
 #*****************************************************************************************#
 
+
+#*****************************************************************************************#
+#                            3. DERIVATION OF NEW VARIABLES                               #
+#*****************************************************************************************#
+
+
 # Feature extraction/selection
+credit.PCA <- PCA(credit)
+
 
 #*****************************************************************************************#
 #                              Initial model assumptions                                  #
 #*****************************************************************************************#
-
-#check correlation
-cor(credit$EDUCATION,credit$default.payment.next.month)
-
-factor.indexes <- head(factor.indexes, -1)
-m1<-lm(default.payment.next.month~.,data=credit[,-factor.indexes])
-summary(m1)
-
-par(mfrow=c(2,2))
-plot(m1)
-
-# execute svm -  why svm? answer this on the document
-require("kernlab")
 n.rows <- nrow(credit)
-n.length <-ncol(credit)
-
-# execute cross validation - maybe not because of the quantity
-# use k-fold CV with k=10
-# k <- 10 
-# folds <- sample(rep(1:k, length=N), N, replace=FALSE) 
+n.cols <- ncol(credit)
 
 # get just one third for validation, the rest to train
-credit.test <- credit[sample(1:n.rows,size = floor(n.rows*0.3),replace = FALSE),]
-credit.train <- subset(credit, !(ID %in% credit.test$ID))
+test.indexes <- sample(1:n.rows,size = floor(n.rows*0.3),replace = FALSE)
+credit.test <- credit[test.indexes,]
+credit.train <- credit[-test.indexes,]
+
+# method to do cross validation for tunning
 
 #array for the best parameters
 c.best <- c()
@@ -258,7 +307,6 @@ polynomial.degree.best<-c()
 compu.time<- c()
 
 # use svm
-library(e1071)
 model2 <- svm(credit.train[,-25],credit.train[,25],epsilon=0.01,gamma=200, C=100)
 lines(credit.train[,-25],predict(model2,credit.train[,-25]),col="green")
 credit.svm<-ksvm(credit.train[,-25],credit.train[,25],epsilon=0.01, C=100)
