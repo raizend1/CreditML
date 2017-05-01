@@ -32,6 +32,9 @@ library(kernlab)
 library(class)
 library(e1071)
 library(psych)
+library(DMwR)
+library(ggrepel)
+library(ggthemes)
 
 #***************************************************************************#
 #               1. Data Loading and some Preprocessing                      #
@@ -168,6 +171,10 @@ ggplot(credit, aes(x = (PAY_AMT1))) +
 ggplot(credit, aes(x = log10(PAY_AMT1))) +
   geom_histogram(bins = 20)
 
+# Paco: nota para Cesc: para análisis de datos multivariantes, Tomás mencionó que el boxplot ya no era tan 
+# explicativo, usabamos mahalanobis distance, creo que debemos dejarlo y  fijate en el codigo que uso abajo para 
+# detectar outliers con el método lofactor, esto lo preguntamos a Tomás o a Lluis por mail, dime que te parece y lo hacemos.
+
 ##################################################################################################################################
 
 # check distribution of data
@@ -184,7 +191,7 @@ draw.plot<-function(input.data,type){
   #   eval(parse(text=glue(type,"(input.data[,i],main = names(input.data)[i])")))}
   # Note: some of the values are negative, so in that case the credit with the positive values is used
   switch(type,
-         histogram={for(i in 1:l.data){hist(log(input.data[,i]),main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
+         histogram={for(i in 1:l.data){hist(input.data[,i],main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
          # histogram={out.plot <- lapply(1:14, function(i) ggplot(data=input.data, aes(input.data[,i])) +
          #                                 geom_histogram(aes(y =..density..),breaks=seq(20, 50, by = 2),col="red",fill="green",alpha = .2) +
          #                                 geom_density(col=i) +labs(title=names(input.data)[i],x=element_blank()))},
@@ -206,13 +213,35 @@ draw.plot(credit.positives, "histogram")
 # function to norm
 norm.function <- function(x) {(x - min(x, na.rm=TRUE))/((max(x,na.rm=TRUE) - min(x, na.rm=TRUE)))}
 
-#outlier detection
+#**************************** Outlier detection with lofactor (Local Outlier Factor) ***********************************
+#outlier detection with lofactor (Local Outlier Factor), takes a while 
+outlier.scores <- lofactor(credit.continuos[,-2], k=10)
+#we cannot plot, there are NaN, infinite values, possible cause is to have more repeated values than neighbours k
+plot(density(outlier.scores))
+#pick top 5 as outliers
+outliers <- order(outlier.scores, decreasing=T)[1:5]
+hist(outliers)
+#Which are the outliers?
+print(outliers)
+# we create a table of scores and id, to remove the supossed outliers
+scores <- cbind.data.frame(score = outlier.scores,id = rownames(credit.continuos))
+credit.continuos1 <- credit.continuos[-as.numeric(scores[scores$score >= scores[outliers[5],]$score,]$id)]
 
+#**************************** Outlier detection Mahalanobis ***********************************
+#outlier detection with mahalanobis 
+outlier.scores2 <- outlier(credit.continuos[,-2])
+#pick top 5 as outliers
+outliers2 <- order(outlier.scores2, decreasing=T)[1:5]
+hist(outliers2)
+#Which are the outliers?
+print(outliers2)
+# we create a table of scores and id, to remove the supossed outliers
+scores2 <- cbind.data.frame(score = outlier.scores2,id = rownames(credit.continuos))
+credit.continuos2 <- credit.continuos[-as.numeric(scores2[scores2$score >= scores2[outliers2[5],]$score,]$id)]
+
+# Altought, from all this, in some cases, the're could be just rich people, or really indebted people
 
 #Normalize the data
-
-# subset of payment history to check some interesting data - maybe
-data.sub.payment.history<-credit[,c(7:12)]
 
 # description of each continuos index with respect to default payment
 describeBy(credit.continuos, credit$default.payment.next.month)
