@@ -173,7 +173,12 @@ ggplot(credit, aes(x = log10(PAY_AMT1))) +
 
 # Paco: nota para Cesc: para análisis de datos multivariantes, Tomás mencionó que el boxplot ya no era tan 
 # explicativo, usabamos mahalanobis distance, creo que debemos dejarlo y  fijate en el codigo que uso abajo para 
-# detectar outliers con el método lofactor, esto lo preguntamos a Tomás o a Lluis por mail, dime que te parece y lo hacemos.
+# detectar outliers con el método lofactor, esto lo preguntamos a Tomás o a Lluis por mail, dime que te parece y 
+# lo hacemos.
+
+# Nota para Cesc: cesc ya le he preguntado a Tomás, me dice que en este caso lo mas recomendable es dejar las
+# variables sin transformar, ademas a pesar de tener el oulier no nos sirve de nada, es como tu mismo pusiste, solo
+# gente con mucha pasta jejeje
 
 ##################################################################################################################################
 
@@ -240,8 +245,6 @@ scores2 <- cbind.data.frame(score = outlier.scores2,id = rownames(credit.continu
 credit.continuos2 <- credit.continuos[-as.numeric(scores2[scores2$score >= scores2[outliers2[5],]$score,]$id)]
 
 # Altought, from all this, in some cases, the're could be just rich people, or really indebted people
-
-#Normalize the data
 
 # description of each continuos index with respect to default payment
 describeBy(credit.continuos, credit$default.payment.next.month)
@@ -324,6 +327,12 @@ cbind(freq.table, p.table)
 #*****************************************************************************************#
 #                                  2.4 EDA PCA                                            #
 #*****************************************************************************************#
+
+
+#*****************************************************************************************#
+#                               Definition of clusters                                    #
+#*****************************************************************************************#
+
 
 
 #*****************************************************************************************#
