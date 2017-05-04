@@ -41,15 +41,14 @@ nine months and above.
 
 Note:Is it interesting to get which one of each category has?
 
-Note:Un crédito revolvente o crédito revolving (del inglés revolving credit) es un 
-tipo de crédito que no tiene un número fijo de cuotas, en contraste con el crédito convencional. Ejemplos de créditos revolventes son los asociados a las tarjetas de crédito.
+Note:Un cr?dito revolvente o cr?dito revolving (del ingl?s revolving credit) es un 
+tipo de cr?dito que no tiene un n?mero fijo de cuotas, en contraste con el cr?dito convencional. Ejemplos de cr?ditos revolventes son los asociados a las tarjetas de cr?dito.
 
 
 X12-X17: Amount of bill statement (NT
 dollar). X12 = amount of bill statement in September, 2005; X13 = amount of
 bill statement in August, 2005; . . .; X17 = amount of bill statement in April,
 2005. 
-
 
 X18-X23: Amount of previous payment (NT
 dollar). X18 = amount paid in September, 2005; X19 = amount paid in August,

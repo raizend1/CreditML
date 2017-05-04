@@ -71,6 +71,10 @@ summary(credit)
 credit<- credit[,-1]
 factor.indexes<-factor.indexes-1 # update indexes of the factors
 
+# define continuous and factor data
+credit.continuos<-credit[,-factor.indexes]
+credit.factors<-credit[,factor.indexes]
+
 # Are there any zero variance predictors? nearZeroVar() diagnoses predictors that have one unique value 
 # (i.e. are zero variance predictors) or predictors that are have both of the following characteristics: 
 # they have very few unique values relative to the number of samples and the ratio of the frequency of the 
@@ -85,8 +89,29 @@ x[x[,"zeroVar"] + x[,"nzv"] > 0, ]
 # First check N/A values
 which(is.na(credit),arr.ind=TRUE) 
 md.pattern(credit)
-# We can't find any value expressed as 'NA', but we can't know for the moment if there is another type of encoding
-# for the missing values. 
+# It can't find any value expressed as 'NA', but there are some rows where all the values for the billing
+# statements and the previous payment are 0, this could be treated as a missing value, because if there is 
+# a credit card issued, there must be values for this columns, so we treat them as missing values. First 
+# a check of how many of this occurrences exist is needed
+check.zero.rows<-function(input.data){
+  indexes<-NULL
+  j<-1
+  for(i in 1:dim(input.data)[1]){
+    if(all(input.data[i,c(1:dim(input.data)[2])]==0)){
+      indexes[j]<- i
+      j<-j+1
+    }
+  }
+  return(indexes)
+}
+
+num.zeros.index<-check.zero.rows(credit.continuos[,-c(1:3)])
+length(num.zeros.index)
+(length(num.zeros.index)*100)/dim(credit)[1]
+# so in total there are 795 of this kind of data, it represents 2.65 of the data, but we will discard them anyway
+# because this data can produce errors in further steps like the change in scales
+
+credit<-credit[-num.zeros.index,]
 
 # Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
 # for the categorical ones, a barplot with the distribution within the levels of the variable.
@@ -107,9 +132,6 @@ for (i in 1:ncol(credit)){
   }
 }
 
-# define continuous and factor data
-credit.continuos<-credit[,-factor.indexes]
-credit.factors<-credit[,factor.indexes]
 
 ################# Analysis of the continuous variables ###################
 summary(credit.continuos)
@@ -210,6 +232,12 @@ draw.plot<-function(input.data,type){
 
 #draw the joint plot with all "original" values for continuous data
 draw.plot(credit.continuos, "histogram")
+bx <- boxcox(BILL_AMT1 ~, data = credit.positives,
+             lambda = seq(-0.25, 0.25, length = 10))
+lambda <- bx$x[which.max(bx$y)]
+credit.positives.bc <- (credit.positives$BILL_AMT1^lambda - 1)/lambda
+hist(Capital.BC, main="Look at that now!")
+
 #draw the joint plot with all positive values for continuous data
 draw.plot(credit.positives, "histogram")
 
@@ -345,18 +373,26 @@ cbind(freq.table, p.table)
 ggplot(credit, aes(x=AGE)) +
   geom_bar(position="dodge", colour="black") + 
   geom_text(stat='count',aes(label=..count..),vjust=-1)
-order(as.data.frame(table(credit$AGE)))
+require(plyr)
+head(arrange(as.data.frame(table(credit$AGE)),desc(Freq)), n = 5)
+# from this analysis, it is obvious that the quantity of users of credit cards, are centered around
+# 29 years old
 
-# a count check of all the education respect to default payment
-ggplot(credit, aes(x=default.payment.next.month)) +
-  geom_bar(mapping = aes(fill = AGE),position="dodge") +
-  geom_text(stat='count',aes(label=..count..),vjust=-1)
+# how many by age
+ggplot(data = credit, mapping = aes(x = default.payment.next.month, ..count..)) + 
+  geom_bar(mapping = aes(fill = AGE), position = "dodge")
 
 # Again a check of the proportions will be useful
 freq.table <- table(credit$AGE, credit$default.payment.next.month)
 p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
-cbind(freq.table, p.table)
-
+(age.df<-as.data.frame(cbind(age=row.names(p.table),freq.table, p.table)))
+head(arrange(age.df,desc(age.df$`Not default`)), n = 5)
+# in this case, the proportions for not default are around 31 years, somewhat closed from the total
+# around 29, but for 57 years, there is also a higher ratio in here, the default parameter is dominant
+# in all the cases
+head(arrange(age.df,desc(age.df$Default)), n = 5)
+# this ratio is somewhat scattered, but they are around 51 and 64 years old, the most default is 
+# predominant.
 
 #*****************************************************************************************#
 #                             2.5 EDA AGE AND EDUCATION                                   #
@@ -383,6 +419,11 @@ credit.PCA <- PCA(credit)
 #*****************************************************************************************#
 n.rows <- nrow(credit)
 n.cols <- ncol(credit)
+
+#initial linear model -> this must be reduced either by factor or dimensionality
+credit.lm<-lm(default.payment.next.month~.,data = credit)
+plot(credit[,-10],credit[,10])
+abline(credit.lm)
 
 # get just one third for validation, the rest to train
 test.indexes <- sample(1:n.rows,size = floor(n.rows*0.3),replace = FALSE)
