@@ -287,12 +287,24 @@ ggplot(credit, aes(x=EDUCATION)) +
   geom_bar(position="dodge", colour="black") + 
   geom_text(stat='count',aes(label=..count..),vjust=-1)
 # we can see that the 4 "unknown" values are very few, comparing them with the others
-# also university is most present in this data
+# also university is most present in this data, so a better way to see this is to group them all.
 
 # a count check of all the education respect to default payment
 ggplot(credit, aes(x=default.payment.next.month)) +
   geom_bar(mapping = aes(fill = EDUCATION),position="dodge") +
   geom_text(stat='count',aes(label=..count..),vjust=-1)
+# university has the most population in both cases, but the tendency is to be not default,
+# so a prior assumption will be that university level koreans will be unable to fill their
+# debt obligations on time
+
+# Again a check of the proportions will be useful
+freq.table <- table(credit$EDUCATION, credit$default.payment.next.month)
+p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
+cbind(freq.table, p.table)
+# The data have interesting results, first showing that not default are the most likely case in
+# the unknown categories, and also showing that even if university is the bigest tendency,
+# graduate level koreans are the ones that in proportion tend to be unable to fullfill their
+# debt obligations in time
 
 #*****************************************************************************************#
 #                                  2.3 EDA Marriage                                       #
@@ -324,8 +336,30 @@ cbind(freq.table, p.table)
 # percentage of default, but again we just have 323 individuals, compared to the +20000 rows that 
 # are either 'Married' or 'Single'.
 
+
 #*****************************************************************************************#
-#                                  2.4 EDA PCA                                            #
+#                                  2.4 EDA AGE                                            #
+#*****************************************************************************************#
+
+# a count of all the values to get an initial idea
+ggplot(credit, aes(x=AGE)) +
+  geom_bar(position="dodge", colour="black") + 
+  geom_text(stat='count',aes(label=..count..),vjust=-1)
+order(as.data.frame(table(credit$AGE)))
+
+# a count check of all the education respect to default payment
+ggplot(credit, aes(x=default.payment.next.month)) +
+  geom_bar(mapping = aes(fill = AGE),position="dodge") +
+  geom_text(stat='count',aes(label=..count..),vjust=-1)
+
+# Again a check of the proportions will be useful
+freq.table <- table(credit$AGE, credit$default.payment.next.month)
+p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
+cbind(freq.table, p.table)
+
+
+#*****************************************************************************************#
+#                             2.5 EDA AGE AND EDUCATION                                   #
 #*****************************************************************************************#
 
 
