@@ -183,17 +183,27 @@ ggplot(credit, aes(x = log10(PAY_AMT1))) +
 
 # check distribution of data
 # draw the first joint plot with all "original" values for continuous data
-draw.plot(credit.continuos, "histogram")
+grid.plot.continuos(credit.continuos, "histogram")
 #then the log values
 credit.continuos.log<-credit.log[,-factor.indexes]
-draw.plot(credit.continuos.log,"histogram")
+grid.plot.continuos(credit.continuos.log,"histogram")
 
 # from this data we can see that a scale is needed in some variables, to do so we will use boxcox
-bx <- boxcox(BILL_AMT1 ~, data = credit.positives,
-             lambda = seq(-0.25, 0.25, length = 10))
+require(MASS)
+# Paco: To deal with negative values, we can sum the minimum value to all the values
+# in the variable, like this
+credit.minimum<-lapply(credit.continuos,min)
+credit.positives<- credit.continuos
+for(i in 1:dim(credit.continuos)[2]){
+  if(credit.minimum[i]<0){
+    credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
+  }
+}
+credit.positives$default.payment.next.month<-as.numeric(credit$default.payment.next.month)
+bx <- boxcox(default.payment.next.month ~., data = credit.positives,lambda = seq(-0.25, 0.25, length = 10))
 lambda <- bx$x[which.max(bx$y)]
-credit.positives.bc <- (credit.positives$BILL_AMT1^lambda - 1)/lambda
-hist(Capital.BC, main="Look at that now!")
+credit.positives.bc <- (credit.positives$BILL_AMT2^lambda - 1)/lambda
+hist(credit.positives.bc, main="Look at that now!")
 
 #draw the joint plot with all positive values for continuous data
 draw.plot(credit.positives, "histogram")

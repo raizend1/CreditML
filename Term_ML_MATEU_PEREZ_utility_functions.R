@@ -86,7 +86,7 @@ grid.plot<-function(input.dataset){
 #' @return Outputs a grid plot of all the variables
 #' 
 #' @examples
-draw.plot<-function(input.data,type){
+grid.plot.continuos<-function(input.data,type){
   l.data<-length(input.data)
   rounded<-round(sqrt(l.data),0)
   par(mar=c(3,3,2,2))
