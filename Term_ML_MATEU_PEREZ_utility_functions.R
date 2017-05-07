@@ -1,0 +1,160 @@
+#############################################################################################
+#                               Utility Functions
+#
+# Script containing all the function that are common among the files of the project
+# The description of each one of them is added in it's description header
+#
+# Date: 
+# Cesc Mateu
+# cesc.mateu@gmail.com
+# Francisco Perez
+# pacogppl@gmail.com
+#############################################################################################
+
+#' @title Draw a histogram of the variable using ggplot
+#'
+#' @description
+#' This function plot the frequency of the given variable.
+#' @param input.dataset: The variable used as input for plot
+#' @param input.variable: The variable used as input for plot
+#' @param log: Boolean indicating if it log transformation is used
+#' 
+#' @return Outputs a plot of the variable
+#' 
+#' @examples
+initial.histogram<-function(input.dataset,input.variable,log){
+  require(ggplot2)
+  if(log)
+    eval(parse(text=glue("ggplot(",deparse(substitute(input.dataset)),", aes(x = log(",deparse(substitute(input.variable)),"))) + geom_histogram(bins = 15)")))
+  else
+    eval(parse(text=glue("ggplot(",deparse(substitute(input.dataset)),", aes(x = ",deparse(substitute(input.variable)),")) + geom_histogram(bins = 15)")))
+}
+
+
+#' @title Draw a boxplot of the variable using ggplot
+#'
+#' @description
+#' This function creates a boxplot of the variable.
+#' @param input.dataset: The variable used as input for plot
+#' @param input.variable: The variable used as input for plot
+#' 
+#' @return Outputs a boxplot of the variable
+#' 
+#' @examples
+initial.boxplot<-function(input.dataset,input.variable,log){
+  require(ggplot2)
+  if(log)
+    eval(parse(text=glue("ggplot(",deparse(substitute(input.dataset)),", aes(x = 0, y= log(",deparse(substitute(input.variable)),"))) + geom_boxplot()")))
+  else
+    eval(parse(text=glue("ggplot(",deparse(substitute(input.dataset)),", aes(x = 0, y = ",deparse(substitute(input.variable)),")) + geom_boxplot()")))
+}
+
+#' @title Draw a gridplot of all the variable using ggplot
+#'
+#' @description
+#' This function creates a consolidated plot of all the variables.
+#' @param input.dataset: The variable used as input for plot
+#' 
+#' @return Outputs a plot of all the variables
+#' 
+#' @examples
+grid.plot<-function(input.dataset){
+  for (i in 1:ncol(input.dataset)){
+    if(is.factor(input.dataset[,i])){
+      print("categorical")
+      g <- ggplot(data = input.dataset, mapping = aes(x = input.dataset[,i])) +
+        geom_bar() +
+        ggtitle(colnames(input.dataset[i]))
+      print(g)
+    }else{
+      print("continuous")
+      c <- ggplot(data = input.dataset, mapping = aes(x = input.dataset[,i])) +
+        geom_histogram()+
+        ggtitle(colnames(input.dataset[i]))
+      print(c)
+    }
+  }
+}
+
+#' @title Draw a gridplot of all the continuos variables
+#'
+#' @description
+#' This function creates a consolidated plot of all the continuos variables.
+#' @param input.data: The variable used as input for plot
+#' @param type: type of plot, there are histogram and plot
+#' 
+#' @return Outputs a grid plot of all the variables
+#' 
+#' @examples
+draw.plot<-function(input.data,type){
+  l.data<-length(input.data)
+  rounded<-round(sqrt(l.data),0)
+  par(mar=c(3,3,2,2))
+  par(mfrow=c(rounded-1, rounded+1))
+  out.plot<-array(dim = l.data)
+  switch(type,
+         histogram={for(i in 1:l.data){hist(input.data[,i],main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
+         plot={for(i in 1:l.data){plot(input.data[,i],main = names(input.data)[i])}},
+         stop("Valid plot types are 'histogram', 'plot'"))
+  #set values to default
+  par(mar= c(5, 4, 4, 2))
+  par(mfrow=c(1,1))
+}
+
+
+#' @title Executes a log modulus transformation 
+#'
+#' @description
+#' Gives a log modulus transformation (log modulus transformation => L(X)=sign(x)*log(|x|+1)) for all the inputted values.
+#' @param input.data: The variable used as input 
+#' 
+#' @return log transformation for all the values
+#' 
+#' @examples
+log.modulus<-function(input.data){
+  output.data<-input.data
+  for(i in 1:dim(input.data)[2]){
+    if(is.numeric(input.data[,i])){
+      signs<-ifelse(input.data[,i]<0,-1,1)
+      output.data[,i]<-signs*log(unlist(lapply(input.data[,i],abs))+1)
+    }
+  }
+  return(output.data)
+}
+
+
+####################ORIGINAL FUNCTIONS########################################
+# Original plotting·
+# ggplot(credit, aes(x = 0, y = LIMIT_BAL)) +
+#   geom_boxplot()
+# 
+# ggplot(credit, aes(x = log10(LIMIT_BAL))) +
+#   geom_histogram(bins = 15)
+
+#Original deal with negative logs
+# credit.minimum<-lapply(credit.continuos,min)
+# credit.positives<- credit.continuos
+# for(i in 1:dim(credit.continuos)[2]){
+#   if(credit.minimum[i]<0){
+#     credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
+#   }
+# }
+
+# Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
+# for the categorical ones, a barplot with the distribution within the levels of the variable.
+# 
+# for (i in 1:ncol(credit)){
+#   if(is.factor(credit[,i])){
+#     print("categorical")
+#     g <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
+#       geom_bar() + 
+#       ggtitle(colnames(credit[i]))
+#     print(g)
+#   }else{
+#     print("continuous")
+#     c <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
+#       geom_histogram()+
+#       ggtitle(colnames(credit[i]))
+#     print(c)
+#   }
+# }
