@@ -64,11 +64,12 @@ initial.boxplot<-function(input.dataset,input.variable,log){
 #' @description
 #' This function creates a consolidated plot of all the variables.
 #' @param input.dataset: The variable used as input for plot
-#' 
+#' @param bins: Number of bins to use in the histogram
+#'  
 #' @return Outputs a plot of all the variables
 #' 
 #' @examples
-grid.plot<-function(input.dataset){
+grid.plot<-function(input.dataset,bins){
   require(ggplot2)
   require(gridExtra)
   dev.off()
@@ -80,7 +81,7 @@ grid.plot<-function(input.dataset){
     if(is.factor(input.dataset[,i])){
       out.command<-glue(out.command,"ggplot(data = ",deparse(substitute(input.dataset)),", mapping = aes(x =",colnames(input.dataset[i]),")) + geom_bar()",",")
     }else{
-      out.command<-glue(out.command,"ggplot(data = ",deparse(substitute(input.dataset)),", mapping = aes(x =",colnames(input.dataset[i]),")) + geom_histogram()",",")
+      out.command<-glue(out.command,"ggplot(data = ",deparse(substitute(input.dataset)),", mapping = aes(x =",colnames(input.dataset[i]),")) + geom_histogram(bins =",bins,")",",")
     }
   }
   out.command<-substring(out.command, 1,nchar(out.command)-1)
@@ -134,6 +135,36 @@ log.modulus<-function(input.data){
   return(output.data)
 }
 
+
+# function to norm
+norm.function <- function(x) {(x - min(x, na.rm=TRUE))/((max(x,na.rm=TRUE) - min(x, na.rm=TRUE)))}
+
+
+#' @title Executes a log modulus transformation 
+#'
+#' @description
+#' Returns a matrix with the mos correlated data.Credits to Lluis A. Belanche
+#' @param mydataframe: The variable used as input 
+#' @param numtoreport Quantity of the number to display
+#' 
+#' @return log transformation for all the values
+#' 
+#' @examples
+mosthighlycorrelated <- function(mydataframe,numtoreport)
+{
+  # find the correlations
+  cormatrix <- cor(mydataframe)
+  # set the correlations on the diagonal or lower triangle to zero,
+  # so they will not be reported as the highest ones:
+  diag(cormatrix) <- 0
+  cormatrix[lower.tri(cormatrix)] <- 0
+  # flatten the matrix into a dataframe for easy sorting
+  fm <- as.data.frame(as.table(cormatrix))
+  # assign human-friendly names
+  names(fm) <- c("First.Variable", "Second.Variable","Correlation")
+  # sort and print the top n correlations
+  head(fm[order(abs(fm$Correlation),decreasing=TRUE),],n=numtoreport)
+}
 
 ####################ORIGINAL FUNCTIONS########################################
 # Original plotting·

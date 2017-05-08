@@ -72,9 +72,9 @@ factor.indexes<-factor.indexes-1 # update indexes of the factors
 #                2. Initial Exploratory Data Analysis (EDA)                 #
 #***************************************************************************#
 
-# define continuous and factor data
-credit.continuos<-credit[,-factor.indexes]
-credit.factors<-credit[,factor.indexes]
+#***************************************************************************#
+#                      2.1 Check Zero variance predictors                   #
+#***************************************************************************#
 
 # Are there any zero variance predictors? nearZeroVar() diagnoses predictors that have one unique value 
 # (i.e. are zero variance predictors) or predictors that are have both of the following characteristics: 
@@ -86,6 +86,10 @@ str(x)
 x[x[,"zeroVar"] > 0, ] 
 x[x[,"zeroVar"] + x[,"nzv"] > 0, ] 
 #There are none, we can conclude that all the predictors are relevant for the moment.
+
+#***************************************************************************#
+#                              2.2 Check N/A Values                         #
+#***************************************************************************#
 
 # First check N/A values
 which(is.na(credit),arr.ind=TRUE) 
@@ -117,12 +121,14 @@ credit<-credit[-num.zeros.index,]
 credit.continuos<-credit[,-factor.indexes]
 credit.factors<-credit[,factor.indexes]
 
-# Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
-# for the categorical ones, a barplot with the distribution within the levels of the variable.
-source("Term_ML_MATEU_PEREZ_utility_functions.R")
-grid.plot<-(credit)
+
+#######*****************NOTA PARA CESC: talves la parte siguiente esta ya obsoleta por el gr'afico de arriba
 
 ################# Analysis of the continuous variables ###################
+# define continuous and factor data
+credit.continuos<-credit[,-factor.indexes]
+credit.factors<-credit[,factor.indexes]
+
 summary(credit.continuos)
 
 ###### LIMIT_BAL ######
@@ -152,6 +158,7 @@ print(sum)
 # in the variable, like this
 
 credit.log<-log.modulus(credit)
+grid.plot(credit.log,15)
 
 initial.histogram(credit,BILL_AMT1,FALSE)
 initial.boxplot(credit,BILL_AMT1,FALSE)
@@ -180,14 +187,28 @@ ggplot(credit, aes(x = log10(PAY_AMT1))) +
 
 ##################################################################################################################################
 
-# check distribution of data
+#***************************************************************************#
+#                        2.3 check distribution of data                     #
+#***************************************************************************#
+
+# Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
+# for the categorical ones, a barplot with the distribution within the levels of the variable.
+grid.plot(credit,15)
+# with this plot, we can see that the continuous data is very skewed, and not normal at all, we will apply some 
+# transformations to make the data more "normal"
+
+#first, apply log modulus transformation in an attempt to normalize data and then plot
+credit.log<-log.modulus(credit)
+grid.plot(credit.log,15)
+
 # draw the first joint plot with all "original" values for continuous data
 grid.plot.continuos(credit.continuos, "histogram")
-#then the log values
-credit.continuos.log<-credit.log[,-factor.indexes]
-grid.plot.continuos(credit.continuos.log,"histogram")
 
-# from this data we can see that a scale is needed in some variables, to do so we will use boxcox
+#then the log values
+grid.plot.continuos(credit.log[,-factor.indexes],"histogram")
+
+# as we can see, the data is not normalized at all, we will use boxcox transform as well
+
 require(MASS)
 # Paco: To deal with negative values, we can sum the minimum value to all the values
 # in the variable, like this
@@ -214,8 +235,9 @@ draw.plot(credit.positives, "histogram")
 
 #most of the data is not normal, have some very high skewed values, also the scales are radicall different
 
-# function to norm
-norm.function <- function(x) {(x - min(x, na.rm=TRUE))/((max(x,na.rm=TRUE) - min(x, na.rm=TRUE)))}
+#***************************************************************************#
+#                            2.4 Outlier Detection                          #
+#***************************************************************************#
 
 #**************************** Outlier detection with lofactor (Local Outlier Factor) ***********************************
 #outlier detection with lofactor (Local Outlier Factor), takes a while 
@@ -243,11 +265,22 @@ print(outliers2)
 scores2 <- cbind.data.frame(score = outlier.scores2,id = rownames(credit.continuos))
 credit.continuos2 <- credit.continuos[-as.numeric(scores2[scores2$score >= scores2[outliers2[5],]$score,]$id)]
 
-# Altought, from all this, in some cases, the're could be just rich people, or really indebted people
+# Altought, from all this, in some cases, the're could be just rich people in some variables, 
+# or really indebted people in others
+
+#***************************************************************************#
+#              2.5 Detection of most correlated variables                   #
+#***************************************************************************#
+cor(credit.continuos)
+mosthighlycorrelated(credit.continuos,10)
 
 # description of each continuos index with respect to default payment
 describeBy(credit.continuos, credit$default.payment.next.month)
 pairs(credit.continuos, main = "Default payment pair plot", col = (1:length(levels(credit$default.payment.next.month)))[unclass(credit$default.payment.next.month)])
+
+#***************************************************************************#
+#                 2.6 Detection of correlation of x and y                   #
+#***************************************************************************#
 
 #***************************************************************************#
 #                             2.1 EDA Sex                                   #
