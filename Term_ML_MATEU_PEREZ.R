@@ -157,7 +157,7 @@ print(sum)
 # Paco: To deal with negative values, we use log modulus transformation => L(X)=sign(x)*log(|x|+1)
 # in the variable, like this
 
-credit.log<-log.modulus(credit)
+credit.log<-log.modulus(credit,5)
 grid.plot(credit.log,15)
 
 initial.histogram(credit,BILL_AMT1,FALSE)
@@ -198,7 +198,7 @@ grid.plot(credit,15)
 # transformations to make the data more "normal"
 
 #first, apply log modulus transformation in an attempt to normalize data and then plot
-credit.log<-log.modulus(credit)
+credit.log<-log.modulus(credit,5)
 grid.plot(credit.log,15)
 
 # draw the first joint plot with all "original" values for continuous data
@@ -272,6 +272,12 @@ credit.continuos2 <- credit.continuos[-as.numeric(scores2[scores2$score >= score
 #              2.5 Detection of most correlated variables                   #
 #***************************************************************************#
 cor(credit.continuos)
+library(corrplot)
+corrplot(cor(credit.continuos), method="circle")
+corrplot(cor(credit.continuos.log), method="circle")
+corrplot(cor(credit.continuos.log), method="number")
+corrplot(cor(credit.continuos.log), method="color")
+corrplot(cor(credit.continuos.log), method="shade")
 mosthighlycorrelated(credit.continuos,10)
 
 # description of each continuos index with respect to default payment
@@ -279,52 +285,43 @@ describeBy(credit.continuos, credit$default.payment.next.month)
 pairs(credit.continuos, main = "Default payment pair plot", col = (1:length(levels(credit$default.payment.next.month)))[unclass(credit$default.payment.next.month)])
 
 #***************************************************************************#
-#                 2.6 Detection of correlation of x and y                   #
+#       2.6 Detection of (correlation) of categorical variables             #
 #***************************************************************************#
 
 #***************************************************************************#
-#                             2.1 EDA Sex                                   #
+#                                2.6.1 Sex                                  #
 #***************************************************************************#
 
 # In this part we are going to analyze SEX variable from the dataset to see if there is anything interesting
 # that gives us more information.
 
 # How many males and females do we have?
-ggplot(data = credit, mapping = aes(x = SEX)) + 
-  geom_bar() +
-  geom_text(stat='count',aes(label=..count..),vjust=-1)
-
+initial.barplot(credit,SEX)
 # We have 34 % more females than males in our dataset.
 
 # How many Default's and Not-Defaults's do we have for each sex?
-ggplot(data = credit, mapping = aes(x = default.payment.next.month, ..count..)) + 
-  geom_bar(mapping = aes(fill = SEX), position = "dodge")
+grouped.count.plot(credit,SEX,default.payment.next.month)
 
 # It seems that females tend to have less default payments, 
 # lets compute the exact proportion to see if there is some kind of bias.
 freq.table <- (with(data = credit, table(SEX, default.payment.next.month)))
 p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
 cbind(freq.table, p.table)
-
 # As we see, the proportion of males with default payment is 0.242, and the proportion of females is 0.208.
 # Indeed, males in general have a higher tendency of default payment.
 
 
-#*****************************************************************************************#
-#                                  2.2 EDA Education                                      #
-#*****************************************************************************************#
+#***************************************************************************#
+#                            2.6.2 Education                                #
+#***************************************************************************#
 
 # a count of all the values to get an initial idea
-ggplot(credit, aes(x=EDUCATION)) +
-  geom_bar(position="dodge", colour="black") + 
-  geom_text(stat='count',aes(label=..count..),vjust=-1)
+initial.barplot(credit,EDUCATION)
 # we can see that the 4 "unknown" values are very few, comparing them with the others
 # also university is most present in this data, so a better way to see this is to group them all.
 
 # a count check of all the education respect to default payment
-ggplot(credit, aes(x=default.payment.next.month)) +
-  geom_bar(mapping = aes(fill = EDUCATION),position="dodge") +
-  geom_text(stat='count',aes(label=..count..),vjust=-1)
+grouped.count.plot(credit,EDUCATION,default.payment.next.month)
 # university has the most population in both cases, but the tendency is to be not default,
 # so a prior assumption will be that university level koreans will be unable to fill their
 # debt obligations on time
@@ -338,24 +335,17 @@ cbind(freq.table, p.table)
 # graduate level koreans are the ones that in proportion tend to be unable to fullfill their
 # debt obligations in time
 
-#*****************************************************************************************#
-#                                  2.3 EDA Marriage                                       #
-#*****************************************************************************************#
-
-# In this part we are going to analyze the 'MARRIAGE' variable from the dataset to see if there
-# is anything interesting that gives us more information.
-
+#***************************************************************************#
+#                            2.6.3 Marriage                                 #
+#***************************************************************************#
 # How are the levels of the variable distributed?
-ggplot(data = credit, mapping = aes(x = MARRIAGE)) + 
-  geom_bar() +
-  geom_text(stat='count',aes(label=..count..),vjust=-1)
+initial.barplot(credit,MARRIAGE)
 
 # Basically we have 'Married' and 'Single' individuals, here we have the percentages of each type
 round(prop.table(table(credit$MARRIAGE)) * 100, digits = 1)
 
 # How many Default's and Not-Defaults's do we have for each type of marriage?
-ggplot(data = credit, mapping = aes(x = default.payment.next.month, ..count..)) + 
-  geom_bar(mapping = aes(fill = MARRIAGE), position = "dodge")
+grouped.count.plot(credit,MARRIAGE,default.payment.next.month)
 
 # Let's compute the exact proportion for each level to see if there is some kind of bias.
 freq.table <- (with(data = credit, table(MARRIAGE, default.payment.next.month)))
@@ -368,23 +358,18 @@ cbind(freq.table, p.table)
 # percentage of default, but again we just have 323 individuals, compared to the +20000 rows that 
 # are either 'Married' or 'Single'.
 
-
-#*****************************************************************************************#
-#                                  2.4 EDA AGE                                            #
-#*****************************************************************************************#
-
+#***************************************************************************#
+#                                 2.6.3 Age                                 #
+#***************************************************************************#
+# Even AGE is not categorical, we wanted to do an analysis to check how the age are related to the 
+# default or not default category
 # a count of all the values to get an initial idea
-ggplot(credit, aes(x=AGE)) +
-  geom_bar(position="dodge", colour="black") + 
-  geom_text(stat='count',aes(label=..count..),vjust=-1)
+initial.barplot(credit,AGE)
+
 require(plyr)
 head(arrange(as.data.frame(table(credit$AGE)),desc(Freq)), n = 5)
 # from this analysis, it is obvious that the quantity of users of credit cards, are centered around
 # 29 years old
-
-# how many by age
-ggplot(data = credit, mapping = aes(x = default.payment.next.month, ..count..)) + 
-  geom_bar(mapping = aes(fill = AGE), position = "dodge")
 
 # Again a check of the proportions will be useful
 freq.table <- table(credit$AGE, credit$default.payment.next.month)
@@ -451,4 +436,17 @@ lines(credit.train[,-25],predict(model2,credit.train[,-25]),col="green")
 credit.svm<-ksvm(credit.train[,-25],credit.train[,25],epsilon=0.01, C=100)
 
 
+library(rpart)
+library(rpart.plot)
+library(rattle)
+p2 = rpart(default.payment.next.month ~ ., data=credit, control=rpart.control(cp=0.001, xval=10))
+p2
+plot(p2)
 
+# THE SEQUENCE OF TREES WITH THEIR COMPLEXITY PARAMETER AND COMPUTED ERROR IN THE TRAINING SAMPLE AND BY CROSSVALIDATION
+printcp(p2)
+
+plot(p2$cptable[,2],p2$cptable[,3],type="l",xlab="size of the tree",ylab="Relative impurity",main="R(t)")
+lines(p2$cptable[,2],p2$cptable[,4],col="blue")
+legend("topright",c("R(T)training","R(T)cv"),col=c("black","blue"),lty=1)
+plotcp(p2)

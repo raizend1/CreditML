@@ -59,6 +59,23 @@ initial.boxplot<-function(input.dataset,input.variable,log){
     eval(parse(text=glue("ggplot(",deparse(substitute(input.dataset)),", aes(x = 0, y = ",deparse(substitute(input.variable)),")) + geom_boxplot()")))
 }
 
+#' @title Draw a barplot of the variable using ggplot
+#'
+#' @description
+#' This function creates a boxplot of the variable.
+#' @param input.dataset: The variable used as input for plot
+#' @param mapping.variable: The variable used mapped for the input
+#' 
+#' @return Outputs a boxplot of the variable
+#' 
+#' @examples
+initial.barplot<-function(input.dataset,mapping.variable){
+  require(ggplot2)
+  ggplot(data = input.dataset, aes_string(x = deparse(substitute(mapping.variable)))) + 
+    geom_bar(position="dodge", colour="black") +  
+    geom_text(stat='count',aes(label=..count..),vjust=-1)
+}
+
 #' @title Draw a grid plot of all the variable using ggplot
 #'
 #' @description
@@ -120,20 +137,56 @@ grid.plot.continuos<-function(input.data,type){
 #' @description
 #' Gives a log modulus transformation (log modulus transformation => L(X)=sign(x)*log(|x|+1)) for all the inputted values.
 #' @param input.data: The variable used as input 
-#' 
+#' @param exclude: Columns to exclude from the transformation
+#'
 #' @return log transformation for all the values
 #' 
 #' @examples
-log.modulus<-function(input.data){
+log.modulus<-function(input.data,exclude){
   output.data<-input.data
   for(i in 1:dim(input.data)[2]){
-    if(is.numeric(input.data[,i])){
-      signs<-ifelse(input.data[,i]<0,-1,1)
-      output.data[,i]<-signs*log(unlist(lapply(input.data[,i],abs))+1)
+    if(!(i %in% exclude)){
+      if(is.numeric(input.data[,i])){
+        signs<-ifelse(input.data[,i]<0,-1,1)
+        output.data[,i]<-signs*log(unlist(lapply(input.data[,i],abs))+1)
+      }
     }
   }
   return(output.data)
 }
+
+#' @title Draw a grid plot on How many Default's and Not-Defaults's do we have for each variable
+#'
+#' @description
+#' This function creates a consolidated plot of all the variables.
+#' @param input.dataset: The variable used as input for plot
+#' @param bins: Number of bins to use in the histogram
+#'  
+#' @return Outputs a plot of all the variables
+#' 
+#' @examples
+grouped.count.plot<-function(input.dataset,fill,target){
+  require(ggplot2)
+  ggplot(data = input.dataset, mapping = aes_string(x = deparse(substitute(target)), "..count..")) + 
+    geom_bar(mapping = aes_string(fill = deparse(substitute(fill))), position = "dodge")
+}
+
+#' @title Draw a grid plot on How many Default's and Not-Defaults's do we have for each variable
+#'
+#' @description
+#' This function creates a consolidated plot of all the variables.
+#' @param input.dataset: The variable used as input for plot
+#' @param bins: Number of bins to use in the histogram
+#'  
+#' @return Outputs a plot of all the variables
+#' 
+#' @examples
+grouped.plot<-function(input.dataset,fill,target){
+  require(ggplot2)
+  ggplot(data = input.dataset, mapping = aes_string(x = deparse(substitute(target)), "..count..")) + 
+    geom_bar(mapping = aes_string(fill = deparse(substitute(fill))), position = "dodge")
+}
+
 
 
 # function to norm
