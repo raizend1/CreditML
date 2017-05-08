@@ -23,6 +23,7 @@ dev.off()
 set.seed(123)
 glue<-function(...){paste(...,sep="")}
 source("workingDir.R")
+source("Term_ML_MATEU_PEREZ_utility_functions.R")
 setwd(codeDir)
 
 # Needed libraries
@@ -118,23 +119,7 @@ credit.factors<-credit[,factor.indexes]
 
 # Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
 # for the categorical ones, a barplot with the distribution within the levels of the variable.
-
-for (i in 1:ncol(credit)){
-  if(is.factor(credit[,i])){
-    print("categorical")
-    g <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
-      geom_bar() + 
-      ggtitle(colnames(credit[i]))
-    print(g)
-  }else{
-    print("continuous")
-    c <- ggplot(data = credit, mapping = aes(x = credit[,i])) +
-      geom_histogram()+
-      ggtitle(colnames(credit[i]))
-    print(c)
-  }
-}
-
+grid.plot<-(credit)
 
 ################# Analysis of the continuous variables ###################
 summary(credit.continuos)
@@ -143,16 +128,13 @@ summary(credit.continuos)
 # Everything seems correct, we have an extreme outlier of an individual with a credit limit of 1.000.000, but it is
 # not impossible, just a lucky rich person :).
 credit[credit$LIMIT_BAL > 900000,]
-ggplot(credit, aes(x = 0, y = LIMIT_BAL)) +
-  geom_boxplot()
-
-ggplot(credit, aes(x = log10(LIMIT_BAL))) +
-  geom_histogram(bins = 15)
+initial.histogram(credit,LIMIT_BAL,FALSE)
+initial.boxplot(credit,LIMIT_BAL,FALSE)
 
 ###### AGE ######
 # Nothing weird. The mean age of the individuals is 35.49 years.
-ggplot(credit, aes(x = 0, y = AGE)) +
-  geom_boxplot()
+initial.histogram(credit,AGE,FALSE)
+initial.boxplot(credit,AGE,FALSE)
 
 ###### BILL_AMT(X) ######
 # We see that we have some negative values in the BILL_AMT(X) variables, can this be possible?
@@ -165,8 +147,9 @@ print(sum)
 # Cesc: We have 3932 different negative values in the BILL_AMT(X) set of variables. What should
 # we do about them?
 
-# Paco: To deal with negative values, we can sum the minimum value to all the values
+# Paco: To deal with negative values, we use log modulus transformation => L(X)=sign(x)*log(|x|+1)
 # in the variable, like this
+<<<<<<< HEAD
 credit.minimum<-lapply(credit.continuos,min)
 credit.positives<- credit.continuos
 for(i in 1:dim(credit.continuos)[2]){
@@ -177,9 +160,15 @@ for(i in 1:dim(credit.continuos)[2]){
  
 ggplot(credit.positives, aes(x = 0, y = BILL_AMT1)) +
   geom_boxplot()
+=======
+credit.log<-log.modulus(credit)
 
-ggplot(credit.positives, aes(x = (BILL_AMT1))) +
-  geom_histogram(bins = 15)
+initial.histogram(credit,BILL_AMT1,FALSE)
+initial.boxplot(credit,BILL_AMT1,FALSE)
+>>>>>>> e1b823e6276410bf2e8e774bf43389ec886ba654
+
+initial.histogram(credit.log,BILL_AMT1,FALSE)
+initial.boxplot(credit.log,BILL_AMT1,FALSE)
 
 ###### PAY_AMT(X) ######
 # All the values for PAY_AMT(X) are either 0 or positive, which is correct. However, we observe that the distribution
@@ -206,39 +195,37 @@ ggplot(credit, aes(x = log10(PAY_AMT1))) +
 ##################################################################################################################################
 
 # check distribution of data
-draw.plot<-function(input.data,type){
-  #require(ggplot2)
-  #require(gridExtra)
+# draw the first joint plot with all "original" values for continuous data
+grid.plot.continuos(credit.continuos, "histogram")
+#then the log values
+credit.continuos.log<-credit.log[,-factor.indexes]
+grid.plot.continuos(credit.continuos.log,"histogram")
 
-  l.data<-length(input.data)
-  rounded<-round(sqrt(l.data),0)
-  par(mar=c(3,3,2,2))
-  par(mfrow=c(rounded-1, rounded+1))
-  # for(i in 1:l.data){
-  out.plot<-array(dim = l.data)
-  #   eval(parse(text=glue(type,"(input.data[,i],main = names(input.data)[i])")))}
-  # Note: some of the values are negative, so in that case the credit with the positive values is used
-  switch(type,
-         histogram={for(i in 1:l.data){hist(input.data[,i],main = names(input.data)[i],prob=TRUE);lines(density(input.data[,i]),col="blue", lwd=2)}},
-         # histogram={out.plot <- lapply(1:14, function(i) ggplot(data=input.data, aes(input.data[,i])) +
-         #                                 geom_histogram(aes(y =..density..),breaks=seq(20, 50, by = 2),col="red",fill="green",alpha = .2) +
-         #                                 geom_density(col=i) +labs(title=names(input.data)[i],x=element_blank()))},
-         plot={for(i in 1:l.data){plot(input.data[,i],main = names(input.data)[i])}},
-         stop("Valid plot types are 'histogram', 'plot'"))
-  #marrangeGrob(input.data, nrow=rounded, ncol=rounded)
-  #set values to default
-  par(mar= c(5, 4, 4, 2))
-  par(mfrow=c(1,1))
+# from this data we can see that a scale is needed in some variables, to do so we will use boxcox
+require(MASS)
+# Paco: To deal with negative values, we can sum the minimum value to all the values
+# in the variable, like this
+credit.minimum<-lapply(credit.continuos,min)
+credit.positives<- credit.continuos
+for(i in 1:dim(credit.continuos)[2]){
+  if(credit.minimum[i]<0){
+    credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
+  }
 }
+<<<<<<< HEAD
 
 # draw the first joint plot with all "original" values for continuous data
 draw.plot(credit.continuos, "histogram")
 # from this data we can see that a scale is needed in some variables, to do so we will use boxcox
 bx <- boxcox(BILL_AMT1 ~, data = credit.positives,
              lambda = seq(-0.25, 0.25, length = 10))
+=======
+credit.positives$default.payment.next.month<-as.numeric(credit$default.payment.next.month)
+bx <- boxcox(default.payment.next.month ~., data = credit.positives,lambda = seq(-0.25, 0.25, length = 10))
+>>>>>>> e1b823e6276410bf2e8e774bf43389ec886ba654
 lambda <- bx$x[which.max(bx$y)]
-credit.positives.bc <- (credit.positives$BILL_AMT1^lambda - 1)/lambda
-hist(Capital.BC, main="Look at that now!")
+credit.positives.bc <- (credit.positives$BILL_AMT2^lambda - 1)/lambda
+hist(credit.positives.bc, main="Look at that now!")
 
 #draw the joint plot with all positive values for continuous data
 draw.plot(credit.positives, "histogram")
