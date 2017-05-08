@@ -110,8 +110,11 @@ length(num.zeros.index)
 (length(num.zeros.index)*100)/dim(credit)[1]
 # so in total there are 795 of this kind of data, it represents 2.65 of the data, but we will discard them anyway
 # because this data can produce errors in further steps like the change in scales
-
 credit<-credit[-num.zeros.index,]
+
+# update continuous and factor data
+credit.continuos<-credit[,-factor.indexes]
+credit.factors<-credit[,factor.indexes]
 
 # Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
 # for the categorical ones, a barplot with the distribution within the levels of the variable.
@@ -171,8 +174,6 @@ for(i in 1:dim(credit.continuos)[2]){
     credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
   }
 }
-
-# lapply(credit.positives,min)
  
 ggplot(credit.positives, aes(x = 0, y = BILL_AMT1)) +
   geom_boxplot()
@@ -230,8 +231,9 @@ draw.plot<-function(input.data,type){
   par(mfrow=c(1,1))
 }
 
-#draw the joint plot with all "original" values for continuous data
+# draw the first joint plot with all "original" values for continuous data
 draw.plot(credit.continuos, "histogram")
+# from this data we can see that a scale is needed in some variables, to do so we will use boxcox
 bx <- boxcox(BILL_AMT1 ~, data = credit.positives,
              lambda = seq(-0.25, 0.25, length = 10))
 lambda <- bx$x[which.max(bx$y)]
