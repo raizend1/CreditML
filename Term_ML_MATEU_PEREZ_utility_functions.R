@@ -10,6 +10,16 @@
 # Francisco Perez
 # pacogppl@gmail.com
 #############################################################################################
+#' @title Function to paste without spaces
+#'
+#' @description
+#' Function to paste without spaces
+#' @param ...: Strings to paste
+#' 
+#' @return pasted string with no spaces
+#' 
+#' @examples
+glue<-function(...){paste(...,sep="")}
 
 #' @title Draw a histogram of the variable using ggplot
 #'
@@ -49,7 +59,7 @@ initial.boxplot<-function(input.dataset,input.variable,log){
     eval(parse(text=glue("ggplot(",deparse(substitute(input.dataset)),", aes(x = 0, y = ",deparse(substitute(input.variable)),")) + geom_boxplot()")))
 }
 
-#' @title Draw a gridplot of all the variable using ggplot
+#' @title Draw a grid plot of all the variable using ggplot
 #'
 #' @description
 #' This function creates a consolidated plot of all the variables.
@@ -59,21 +69,23 @@ initial.boxplot<-function(input.dataset,input.variable,log){
 #' 
 #' @examples
 grid.plot<-function(input.dataset){
+  require(ggplot2)
+  require(gridExtra)
+  dev.off()
+  par(mar=c(3,3,2,2))
+  l.data<-length(input.dataset)
+  rounded<-round(sqrt(l.data),0)
+  out.command<-NULL
   for (i in 1:ncol(input.dataset)){
     if(is.factor(input.dataset[,i])){
-      print("categorical")
-      g <- ggplot(data = input.dataset, mapping = aes(x = input.dataset[,i])) +
-        geom_bar() +
-        ggtitle(colnames(input.dataset[i]))
-      print(g)
+      out.command<-glue(out.command,"ggplot(data = ",deparse(substitute(input.dataset)),", mapping = aes(x =",colnames(input.dataset[i]),")) + geom_bar()",",")
     }else{
-      print("continuous")
-      c <- ggplot(data = input.dataset, mapping = aes(x = input.dataset[,i])) +
-        geom_histogram()+
-        ggtitle(colnames(input.dataset[i]))
-      print(c)
+      out.command<-glue(out.command,"ggplot(data = ",deparse(substitute(input.dataset)),", mapping = aes(x =",colnames(input.dataset[i]),")) + geom_histogram()",",")
     }
   }
+  out.command<-substring(out.command, 1,nchar(out.command)-1)
+  eval(parse(text=glue("final.plot<-arrangeGrob(",out.command,",ncol =", rounded,", nrow =", rounded,")")))
+  grid::grid.draw(final.plot)
 }
 
 #' @title Draw a gridplot of all the continuos variables

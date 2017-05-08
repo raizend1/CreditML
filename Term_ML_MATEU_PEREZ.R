@@ -21,9 +21,9 @@
 rm(list=ls(all=TRUE))
 dev.off()
 set.seed(123)
-glue<-function(...){paste(...,sep="")}
-source("workingDir.R")
 source("Term_ML_MATEU_PEREZ_utility_functions.R")
+source("workingDir.R")
+
 setwd(codeDir)
 
 # Needed libraries
@@ -38,7 +38,7 @@ library(ggrepel)
 library(ggthemes)
 
 #***************************************************************************#
-#               1. Data Loading and some Preprocessing                      #
+#                    1. Data Loading and Preprocessing                      #
 #***************************************************************************#
 
 # Read initial data
@@ -64,13 +64,13 @@ levels(credit$default.payment.next.month) <- c("Not default", "Default")
 str(credit)
 summary(credit)
 
-#***************************************************************************#
-#                2. Initial Exploratory Data Analysis (EDA)                 #
-#***************************************************************************#
-
 # Remove unnecesary data: ID
 credit<- credit[,-1]
 factor.indexes<-factor.indexes-1 # update indexes of the factors
+
+#***************************************************************************#
+#                2. Initial Exploratory Data Analysis (EDA)                 #
+#***************************************************************************#
 
 # define continuous and factor data
 credit.continuos<-credit[,-factor.indexes]
@@ -106,10 +106,10 @@ check.zero.rows<-function(input.data){
   return(indexes)
 }
 
-num.zeros.index<-check.zero.rows(credit.continuos[,-c(1:3)])
+num.zeros.index<-check.zero.rows(credit[,c(12:23)])
 length(num.zeros.index)
 (length(num.zeros.index)*100)/dim(credit)[1]
-# so in total there are 795 of this kind of data, it represents 2.65 of the data, but we will discard them anyway
+# so in total there are 795 of this kind of data, it represents 2.65% of the data, but we will discard them anyway
 # because this data can produce errors in further steps like the change in scales
 credit<-credit[-num.zeros.index,]
 
@@ -119,6 +119,7 @@ credit.factors<-credit[,factor.indexes]
 
 # Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
 # for the categorical ones, a barplot with the distribution within the levels of the variable.
+source("Term_ML_MATEU_PEREZ_utility_functions.R")
 grid.plot<-(credit)
 
 ################# Analysis of the continuous variables ###################
@@ -149,26 +150,11 @@ print(sum)
 
 # Paco: To deal with negative values, we use log modulus transformation => L(X)=sign(x)*log(|x|+1)
 # in the variable, like this
-<<<<<<< HEAD
-credit.minimum<-lapply(credit.continuos,min)
-credit.positives<- credit.continuos
-for(i in 1:dim(credit.continuos)[2]){
-  if(credit.minimum[i]<0){
-    credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
-  }
-}
- 
-ggplot(credit.positives, aes(x = 0, y = BILL_AMT1)) +
-  geom_boxplot()
-=======
+
 credit.log<-log.modulus(credit)
 
 initial.histogram(credit,BILL_AMT1,FALSE)
 initial.boxplot(credit,BILL_AMT1,FALSE)
->>>>>>> e1b823e6276410bf2e8e774bf43389ec886ba654
-
-initial.histogram(credit.log,BILL_AMT1,FALSE)
-initial.boxplot(credit.log,BILL_AMT1,FALSE)
 
 ###### PAY_AMT(X) ######
 # All the values for PAY_AMT(X) are either 0 or positive, which is correct. However, we observe that the distribution
@@ -212,17 +198,13 @@ for(i in 1:dim(credit.continuos)[2]){
     credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
   }
 }
-<<<<<<< HEAD
 
 # draw the first joint plot with all "original" values for continuous data
 draw.plot(credit.continuos, "histogram")
+
 # from this data we can see that a scale is needed in some variables, to do so we will use boxcox
-bx <- boxcox(BILL_AMT1 ~, data = credit.positives,
-             lambda = seq(-0.25, 0.25, length = 10))
-=======
 credit.positives$default.payment.next.month<-as.numeric(credit$default.payment.next.month)
 bx <- boxcox(default.payment.next.month ~., data = credit.positives,lambda = seq(-0.25, 0.25, length = 10))
->>>>>>> e1b823e6276410bf2e8e774bf43389ec886ba654
 lambda <- bx$x[which.max(bx$y)]
 credit.positives.bc <- (credit.positives$BILL_AMT2^lambda - 1)/lambda
 hist(credit.positives.bc, main="Look at that now!")
