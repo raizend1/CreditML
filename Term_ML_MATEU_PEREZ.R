@@ -36,6 +36,7 @@ library(psych)
 library(DMwR)
 library(ggrepel)
 library(ggthemes)
+library(mice)
 
 #***************************************************************************#
 #                    1. Data Loading and Preprocessing                      #
@@ -210,15 +211,6 @@ grid.plot.continuos(credit.log[,-factor.indexes],"histogram")
 # as we can see, the data is not normalized at all, we will use boxcox transform as well
 
 require(MASS)
-# Paco: To deal with negative values, we can sum the minimum value to all the values
-# in the variable, like this
-credit.minimum<-lapply(credit.continuos,min)
-credit.positives<- credit.continuos
-for(i in 1:dim(credit.continuos)[2]){
-  if(credit.minimum[i]<0){
-    credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
-  }
-}
 
 # draw the first joint plot with all "original" values for continuous data
 draw.plot(credit.continuos, "histogram")
@@ -272,6 +264,7 @@ credit.continuos2 <- credit.continuos[-as.numeric(scores2[scores2$score >= score
 #              2.5 Detection of most correlated variables                   #
 #***************************************************************************#
 cor(credit.continuos)
+credit.continuos.log<-credit.log[,-factor.indexes]
 library(corrplot)
 corrplot(cor(credit.continuos), method="circle")
 corrplot(cor(credit.continuos.log), method="circle")
@@ -279,6 +272,10 @@ corrplot(cor(credit.continuos.log), method="number")
 corrplot(cor(credit.continuos.log), method="color")
 corrplot(cor(credit.continuos.log), method="shade")
 mosthighlycorrelated(credit.continuos,10)
+mosthighlycorrelated(credit.continuos.log,10)
+
+# from the correlation calculus, we can see that there is a clear relationship between the values of BILL_AMT(x),
+# and BILL_AMT(x+1), so we can apply a dimensionality reduction technique, like pca for example, on this values
 
 # description of each continuos index with respect to default payment
 describeBy(credit.continuos, credit$default.payment.next.month)
@@ -400,7 +397,7 @@ head(arrange(age.df,desc(age.df$Default)), n = 5)
 
 
 # Feature extraction/selection
-credit.PCA <- PCA(credit)
+credit.PCA <- PCA(credit,)
 
 
 #*****************************************************************************************#
@@ -418,6 +415,9 @@ abline(credit.lm)
 test.indexes <- sample(1:n.rows,size = floor(n.rows*0.3),replace = FALSE)
 credit.test <- credit[test.indexes,]
 credit.train <- credit[-test.indexes,]
+
+# then we check if the test and train samples are balanced
+table(credit$default.payment.next.month)
 
 # method to do cross validation for tunning
 

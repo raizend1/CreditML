@@ -89,7 +89,8 @@ initial.barplot<-function(input.dataset,mapping.variable){
 grid.plot<-function(input.dataset,bins){
   require(ggplot2)
   require(gridExtra)
-  dev.off()
+  par(mfrow=c(1,1))
+  #dev.off()
   par(mar=c(3,3,2,2))
   l.data<-length(input.dataset)
   rounded<-round(sqrt(l.data),0)
@@ -252,5 +253,15 @@ mosthighlycorrelated <- function(mydataframe,numtoreport)
 #       geom_histogram()+
 #       ggtitle(colnames(credit[i]))
 #     print(c)
+#   }
+# }
+
+# Paco: To deal with negative values, we can sum the minimum value to all the values
+# in the variable, like this
+# credit.minimum<-lapply(credit.continuos,min)
+# credit.positives<- credit.continuos
+# for(i in 1:dim(credit.continuos)[2]){
+#   if(credit.minimum[i]<0){
+#     credit.positives[,i] <- credit.continuos[,i]+(as.numeric(credit.minimum[i])*-1)
 #   }
 # }

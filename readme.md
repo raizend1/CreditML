@@ -1,5 +1,5 @@
 # About the project
-This project uses multivariant methods to discover hidden features, and machine learning techniques to  on the default of credit card clients Data Set
+This project uses multivariant methods to discover hidden features, and machine learning techniques to  on the default of credit card clients Data Set. For this process we will use methods from ML from MIRI
 
 # More detailed explanation on dataset used
 This research employed a binary variable, default
