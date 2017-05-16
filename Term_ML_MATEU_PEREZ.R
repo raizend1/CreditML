@@ -34,9 +34,10 @@ library(class)
 library(e1071)
 library(psych)
 library(DMwR)
+library(chemometrics)
 library(ggrepel)
 library(ggthemes)
-library(mice)
+library(robustbase)
 
 #***************************************************************************#
 #                    1. Data Loading and Preprocessing                      #
@@ -198,34 +199,18 @@ grid.plot(credit,15)
 # with this plot, we can see that the continuous data is very skewed, and not normal at all, we will apply some 
 # transformations to make the data more "normal"
 
-#first, apply log modulus transformation in an attempt to normalize data and then plot
+# First, apply log modulus transformation in an attempt to normalize data and then plot
 credit.log<-log.modulus(credit,5)
 grid.plot(credit.log,15)
 
-# draw the first joint plot with all "original" values for continuous data
+# Just Isolating each data and show the difference after and before plotting
 grid.plot.continuos(credit.continuos, "histogram")
-
-#then the log values
 grid.plot.continuos(credit.log[,-factor.indexes],"histogram")
 
-# as we can see, the data is not normalized at all, we will use boxcox transform as well
+# Most of the data tends to be normal after the log.modulus transform
 
-require(MASS)
-
-# draw the first joint plot with all "original" values for continuous data
-draw.plot(credit.continuos, "histogram")
-
-# from this data we can see that a scale is needed in some variables, to do so we will use boxcox
-credit.positives$default.payment.next.month<-as.numeric(credit$default.payment.next.month)
-bx <- boxcox(default.payment.next.month ~., data = credit.positives,lambda = seq(-0.25, 0.25, length = 10))
-lambda <- bx$x[which.max(bx$y)]
-credit.positives.bc <- (credit.positives$BILL_AMT2^lambda - 1)/lambda
-hist(credit.positives.bc, main="Look at that now!")
-
-#draw the joint plot with all positive values for continuous data
-draw.plot(credit.positives, "histogram")
-
-#most of the data is not normal, have some very high skewed values, also the scales are radicall different
+# We will update our continuous plot then 
+credit.continuos.log <- credit.log[,-factor.indexes]
 
 #***************************************************************************#
 #                            2.4 Outlier Detection                          #
@@ -233,7 +218,8 @@ draw.plot(credit.positives, "histogram")
 
 #**************************** Outlier detection with lofactor (Local Outlier Factor) ***********************************
 #outlier detection with lofactor (Local Outlier Factor), takes a while 
-outlier.scores <- lofactor(credit.continuos[,-2], k=10)
+require(DMwR)
+outlier.scores <- lofactor(credit.continuos.log[,-2], k=10)
 #we cannot plot, there are NaN, infinite values, possible cause is to have more repeated values than neighbours k
 plot(density(outlier.scores))
 #pick top 5 as outliers
@@ -243,19 +229,13 @@ hist(outliers)
 print(outliers)
 # we create a table of scores and id, to remove the supossed outliers
 scores <- cbind.data.frame(score = outlier.scores,id = rownames(credit.continuos))
-credit.continuos1 <- credit.continuos[-as.numeric(scores[scores$score >= scores[outliers[5],]$score,]$id)]
+credit.continuos.log.lofactor <- credit.continuos.log[-as.numeric(scores[scores$score >= scores[outliers[5],]$score,]$id)]
 
 #**************************** Outlier detection Mahalanobis ***********************************
 #outlier detection with mahalanobis 
-outlier.scores2 <- outlier(credit.continuos[,-2])
-#pick top 5 as outliers
-outliers2 <- order(outlier.scores2, decreasing=T)[1:5]
-hist(outliers2)
-#Which are the outliers?
-print(outliers2)
-# we create a table of scores and id, to remove the supossed outliers
-scores2 <- cbind.data.frame(score = outlier.scores2,id = rownames(credit.continuos))
-credit.continuos2 <- credit.continuos[-as.numeric(scores2[scores2$score >= scores2[outliers2[5],]$score,]$id)]
+require(chemometrics)
+outlier.scores2 <- Moutlier(credit.continuos.log[,-2],quantile=0.975,plot=TRUE)
+credit.continuos.log.Moutlier <- subset(credit.continuos.log,outlier.scores2$md<outlier.scores2$cutoff)
 
 # Altought, from all this, in some cases, the're could be just rich people in some variables, 
 # or really indebted people in others
