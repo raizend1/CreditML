@@ -53,22 +53,32 @@ dim(credit)
 # We have a dataset with 30000 rows and 25 variables. All variables are defined as continuous integers,
 # and some of them need to be changed to categorical.
 
-# Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
-factor.indexes <- which(names(credit) %in% c("PAY_0","PAY_2","PAY_3","PAY_4","PAY_5","PAY_6","SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
+# Change ''AGE 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
+factor.indexes <- which(names(credit) %in% c("AGE","PAY_0","PAY_2","PAY_3","PAY_4","PAY_5","PAY_6","SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
 credit[,factor.indexes] <- lapply(credit[,factor.indexes], as.factor)
-
-# Rename the levels of the categorical values for better unsderstanding
-levels(credit$SEX) <- c("Male", "Female")
-levels(credit$EDUCATION) <- c("Unknown1", "Graduate", "University", "High School", "Unknown2", "Unknown3", "Unknown4")
-levels(credit$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
-levels(credit$default.payment.next.month) <- c("Not default", "Default")
-
-str(credit)
-summary(credit)
 
 # Remove unnecesary data: ID
 credit<- credit[,-1]
 factor.indexes<-factor.indexes-1 # update indexes of the factors
+
+# Rename the levels of the categorical values for better unsderstanding
+levels(credit$SEX) <- c("Male", "Female")
+levels(credit$EDUCATION) <- c("Uk1", "Grad.", "Univ.", "H.School", "Uk2", "Uk3", "Uk4")
+levels(credit$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
+levels(credit$default.payment.next.month) <- c("Not default", "Default")
+# rename factor variables from columns PAY 6 to 11
+for(i in 6:11){
+  # levels(credit[,i]) <- c("No consumption", "Paid in full","Use of revolving credit","Payment delay 1M","Payment delay 2M",
+  #                         "Payment delay 3M","Payment delay 4M","Payment delay 5M","Payment delay 6M","Payment delay 7M",
+  #                         "Payment delay 8M")
+  levels(credit[,i]) <- c("NC", "PF","URC","PD1","PD2",
+                          "PD3","PD4","PD5","PD6","PD7","PD8")
+}
+
+str(credit)
+summary(credit)
+
+
 
 #***************************************************************************#
 #                2. Initial Exploratory Data Analysis (EDA)                 #
@@ -124,12 +134,9 @@ credit.continuos<-credit[,-factor.indexes]
 credit.factors<-credit[,factor.indexes]
 
 
-#######*****************NOTA PARA CESC: talves la parte siguiente esta ya obsoleta por el gr'afico de arriba
+#######*****************NOTA PARA CESC: talves la parte siguiente esta ya obsoleta por el gráfico de abajo de esta seccion
 
 ################# Analysis of the continuous variables ###################
-# define continuous and factor data
-credit.continuos<-credit[,-factor.indexes]
-credit.factors<-credit[,factor.indexes]
 
 summary(credit.continuos)
 
@@ -222,8 +229,8 @@ require(DMwR)
 outlier.scores <- lofactor(credit.continuos.log[,-2], k=10)
 #we cannot plot, there are NaN, infinite values, possible cause is to have more repeated values than neighbours k
 plot(density(outlier.scores))
-#pick top 5 as outliers
-outliers <- order(outlier.scores, decreasing=T)[1:5]
+#pick top 10 as outliers
+outliers <- order(outlier.scores, decreasing=T)[1:10]
 hist(outliers)
 #Which are the outliers?
 print(outliers)
@@ -246,13 +253,9 @@ credit.continuos.log.Moutlier <- subset(credit.continuos.log,outlier.scores2$md<
 cor(credit.continuos)
 credit.continuos.log<-credit.log[,-factor.indexes]
 library(corrplot)
-corrplot(cor(credit.continuos), method="circle")
+par(mfrow=c(1,2))
 corrplot(cor(credit.continuos.log), method="circle")
 corrplot(cor(credit.continuos.log), method="number")
-corrplot(cor(credit.continuos.log), method="color")
-corrplot(cor(credit.continuos.log), method="shade")
-mosthighlycorrelated(credit.continuos,10)
-mosthighlycorrelated(credit.continuos.log,10)
 
 # from the correlation calculus, we can see that there is a clear relationship between the values of BILL_AMT(x),
 # and BILL_AMT(x+1), so we can apply a dimensionality reduction technique, like pca for example, on this values
@@ -366,23 +369,31 @@ head(arrange(age.df,desc(age.df$Default)), n = 5)
 
 
 #*****************************************************************************************#
-#                               Definition of clusters                                    #
-#*****************************************************************************************#
-
-
-
-#*****************************************************************************************#
 #                            3. DERIVATION OF NEW VARIABLES                               #
 #*****************************************************************************************#
-
-
-# Feature extraction/selection
-credit.PCA <- PCA(credit,)
 
 
 #*****************************************************************************************#
 #                              Initial model assumptions                                  #
 #*****************************************************************************************#
+# Check importance of variables
+# Feature selection
+# Checking PCA
+# First add the variable to check them as supplementary
+credit.continuos.log$default.payment.next.month <- credit$default.payment.next.month
+require(FactoMineR)
+credit.PCA1 <- PCA(credit.continuos.log,quali.sup = 14)
+
+credit.glm<-glm(default.payment.next.month ~.,data = credit.continuos.log)
+
+#prediction directly with log
+
+NNModel2 <- train(Train[,-10], trainResponse,
+                  method = "nnet",
+                  preProcess = c("pca"),
+                  trControl= trainControl(method = "cv", number = 10),
+                  tuneGrid = expand.grid(.size=c(1,5,10, 15, 20, 25, 30, 35, 40),.decay=c(0,0.001,0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 3, 4)))
+
 n.rows <- nrow(credit)
 n.cols <- ncol(credit)
 
@@ -430,3 +441,7 @@ plot(p2$cptable[,2],p2$cptable[,3],type="l",xlab="size of the tree",ylab="Relati
 lines(p2$cptable[,2],p2$cptable[,4],col="blue")
 legend("topright",c("R(T)training","R(T)cv"),col=c("black","blue"),lty=1)
 plotcp(p2)
+
+#*****************************************************************************************#
+#                               Definition of clusters                                    #
+#*****************************************************************************************#
