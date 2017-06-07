@@ -315,13 +315,70 @@ stratified <- function(df, group, size, select = NULL,
 #' @param align: array of string containing the size of the columns. If unspecified will use default values. An example
 #' to get 5 columns with the second one with 10cm wide: align.columns = c("rp{10cm}rrr")
 #' @param file: name of the output file. Must contain .tex at the end
+#' @param digits: number of decimals to use
 #' 
-#' @return log transformation for all the values
+#' @return latex table
 #' 
 #' @examples
-create.latex.table<-function(df,type,caption,align,file){
+create.latex.table<-function(df,type,caption,align,file,digits){
   require(xtable)
-  ifelse(is.null(align),print(xtable(df,type=type,caption=caption),file=file),print(xtable(df,type=type,caption=caption,align = align.columns),file=file))
+  ifelse(missing(align),print(xtable(data.frame(row = rownames(df),data.frame(df)),type=type,caption=caption,digits=digits),file=file,include.rownames = FALSE),print(xtable(data.frame(row = rownames(df),data.frame(df)),type=type,caption=caption,align = align),file=file,include.rownames = FALSE,digits=digits))
+}
+
+#' @title Saves a plot
+#'
+#' @description
+#' Saves a plot in the specified directory
+#' @param plot: command that creates the plot
+#' @param name: string that is name of the plot with its extension
+#' @param type: string that is type of the image (jpeg,png)
+#' @param plotDir: string that is the directory where the plot will be stored
+#' @param width: string that is the width of the plot 
+#' @param height: string that is the height of the plot 
+#' @param res: string with the resolution of the saved plot
+#' 
+#' @return saved plot
+#' 
+#' @examples
+save.plot<-function(plot,name,type,plotDir,width,height,res){
+  eval(parse(text = glue('setwd(\"',plotDir,'\");
+                         ',type,'(\"',name,'\",width =', width,',height =,', height,',units = "px",res =', res,');
+                         ',deparse(substitute(plot)),';
+                         dev.off()')))
+  setwd(codeDir)
+}
+
+#' @title Bind columns with different extensions
+#'
+#' @description
+#' Bind columns with different extensions
+#' @param ... Datasets to be bind by column
+#' 
+#' @return Dataset with binded columns  from the original one
+#' 
+#' @examples
+#https://stackoverflow.com/questions/6988184/combining-two-data-frames-of-different-lengths
+cbindPad <- function(...){
+  args <- list(...)
+  n <- sapply(args,nrow)
+  mx <- max(n)
+  pad <- function(x, mx){
+    if (nrow(x) < mx){
+      nms <- colnames(x)
+      padTemp <- matrix(NA, mx - nrow(x), ncol(x))
+      colnames(padTemp) <- nms
+      if (ncol(x)==0) {
+        return(padTemp)
+      } else {
+        return(rbind(x,padTemp))
+      }
+    }
+    else{
+      return(x)
+    }
+  }
+  rs <- lapply(args,pad,mx)
+  return(do.call(cbind,rs))
 }
 
 ####################ORIGINAL FUNCTIONS########################################
