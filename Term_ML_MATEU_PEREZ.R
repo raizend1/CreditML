@@ -40,6 +40,7 @@ library(ggthemes)
 library(robustbase)
 library(knitcitations)
 library(doParallel)
+library(gridExtra)
 #***************************************************************************#
 #                    1. Data Loading and Preprocessing                      #
 #***************************************************************************#
@@ -93,14 +94,16 @@ summary(credit)
 # (i.e. are zero variance predictors) or predictors that are have both of the following characteristics: 
 # they have very few unique values relative to the number of samples and the ratio of the frequency of the 
 # most common value to the frequency of the second most common value is large.  
-library("caret")
-cl <- makeCluster(detectCores())
-registerDoParallel(cl)
-zero.variance <- nearZeroVar(credit, saveMetrics = TRUE)
-stopCluster(cl)
-str(zero.variance)
-zero.variance[zero.variance[,"zeroVar"] > 0, ] 
-zero.variance[zero.variance[,"zeroVar"] + zero.variance[,"nzv"] > 0, ] 
+
+# library("caret")
+# cl <- makeCluster(detectCores())
+# registerDoParallel(cl)
+# zero.variance <- nearZeroVar(credit, saveMetrics = TRUE)
+# stopCluster(cl)
+# str(zero.variance)
+# zero.variance[zero.variance[,"zeroVar"] > 0, ] 
+# zero.variance[zero.variance[,"zeroVar"] + zero.variance[,"nzv"] > 0, ] 
+
 #There are none, we can conclude that all the predictors are relevant for the moment.
 
 #***************************************************************************#
@@ -108,9 +111,10 @@ zero.variance[zero.variance[,"zeroVar"] + zero.variance[,"nzv"] > 0, ]
 #***************************************************************************#
 
 # First check N/A values
-# First check N/A values
-which(is.na(credit),arr.ind=TRUE) 
-md.pattern(credit)
+
+# which(is.na(credit),arr.ind=TRUE) 
+# md.pattern(credit)
+
 # It can't find any value expressed as 'NA', but there are some rows where all the values for the billing
 # statements and the previous payment are 0, this could be treated as a missing value, because if there is 
 # a credit card issued, there must be values for this columns, so we treat them as missing values. First 
@@ -139,11 +143,11 @@ check.zero.rows<-function(input.data){
   return(indexes)
 }
 
-# cl <- makeCluster(detectCores())
-# registerDoParallel(cl)
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
 num.new.clients<-check.new.clients(credit[,c(6:23)])
 num.zeros.index<-check.zero.rows(credit[,c(6:23)])
-# stopCluster(cl)
+stopCluster(cl)
 
 #number of "inactive" users
 length(num.zeros.index)
@@ -158,8 +162,6 @@ credit<-credit[-num.zeros.index,]
 # update continuous and factor data
 credit.continuos<-credit[,-factor.indexes]
 credit.factors<-credit[,factor.indexes]
-
-#######*****************NOTA PARA CESC: talves la parte siguiente esta ya obsoleta por el gráfico de abajo de esta seccion
 
 ################# Analysis of the continuous variables ###################
 
@@ -202,13 +204,13 @@ initial.boxplot(credit,BILL_AMT1,FALSE)
 # is very skewed, which leads us to apply logarithms. 
 # For example, PAY_AMT1 has a mean of 5664, but its maximum is 873552. We can't know for sure if this is
 # correct. Let's take a look at the histogram and the boxplot
-ggplot(credit, aes(x = 0, y = PAY_AMT1)) +
-  geom_boxplot()
 
-ggplot(credit, aes(x = (PAY_AMT1))) +
-  geom_histogram(bins = 20)
-ggplot(credit, aes(x = log10(PAY_AMT1))) +
-  geom_histogram(bins = 20)
+# ggplot(credit, aes(x = 0, y = PAY_AMT1)) +
+#   geom_boxplot()
+# ggplot(credit, aes(x = (PAY_AMT1))) +
+#   geom_histogram(bins = 20)
+# ggplot(credit, aes(x = log10(PAY_AMT1))) +
+#   geom_histogram(bins = 20)
 
 # Paco: nota para Cesc: para análisis de datos multivariantes, Tomás mencionó que el boxplot ya no era tan 
 # explicativo, usabamos mahalanobis distance, creo que debemos dejarlo y  fijate en el codigo que uso abajo para 
@@ -222,26 +224,30 @@ ggplot(credit, aes(x = log10(PAY_AMT1))) +
 ##################################################################################################################################
 
 #***************************************************************************#
-#                        2.3 check distribution of data                     #
+#                        2.3 Check distribution of data                     #
 #***************************************************************************#
 
 # Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
 # for the categorical ones, a barplot with the distribution within the levels of the variable.
-grid.plot(credit,15)
-save.plot(grid.plot(credit,15),"Variable_Distribution.jpeg","jpeg",plotDir,"1500","1500","110")
-setwd(codeDir)
-# with this plot, we can see that the continuous data is very skewed, and not normal at all, we will apply some 
+
+# grid.plot(credit,15)
+#save.plot(grid.plot(credit,15),"Variable_Distribution.jpeg","jpeg",plotDir,"1500","1500","110")
+#setwd(codeDir)
+
+# With this plot, we can see that the continuous data is very skewed, and not normal at all, we will apply some 
 # transformations to make the data more "normal"
 
-#we don't need to apply any standardization, all the continuous predictors are in NT Dollars
+# We don't need to apply any standardization, all the continuous predictors are in NT Dollars
 # First, apply log modulus transformation in an attempt to normalize data and then plot
+
 # credit<-log.modulus(credit,5)
 # grid.plot(credit,15)
 # save.plot(grid.plot(credit,15),"Variable_Distribution_Log.jpeg","jpeg",plotDir,"1500","1500","110")
 
 # Just Isolating each data and show the difference after and before plotting
-grid.plot.continuos(credit.continuos, "histogram")
-grid.plot.continuos(credit[,-factor.indexes],"histogram")
+
+# grid.plot.continuos(credit.continuos, "histogram")
+# grid.plot.continuos(credit[,-factor.indexes],"histogram")
 
 # Most of the data tends to be normal after the log.modulus transform
 
@@ -253,25 +259,36 @@ credit.continuos <- credit[,-factor.indexes]
 #***************************************************************************#
 
 #**************************** Outlier detection with lofactor (Local Outlier Factor) ***********************************
-#outlier detection with lofactor (Local Outlier Factor), takes a while 
+# Outlier detection with lofactor (Local Outlier Factor)
+
 require(DMwR)
-outlier.scores <- lofactor(credit.continuos[,-2], k=10)
-#we cannot plot, there are NaN, infinite values, possible cause is to have more repeated values than neighbours k
+outlier.scores <- lofactor(credit.continuos[,-2], k=10) # Warning: This takes a while!
+
+# We cannot plot, there are NaN, infinite values, possible cause is to have more repeated values than neighbours k
+
 plot(density(outlier.scores))
-#pick top 10 as outliers
-outliers <- order(outlier.scores, decreasing=T)[1:10]
+
+# Pick top 10 as outliers
+
+(outliers <- order(outlier.scores, decreasing=T)[1:10])
 hist(outliers)
-#Which are the outliers?
+
+# Which are the outliers?
+
 print(outliers)
-# we create a table of scores and id, to remove the supossed outliers
+
+# We create a table of scores and id, to remove the supossed outliers
+
 scores <- cbind.data.frame(score = outlier.scores,id = rownames(credit.continuos))
-#credit <- credit[-as.numeric(scores[scores$score >= scores[outliers[5],]$score,]$id)]
+
+# Credit <- credit[-as.numeric(scores[scores$score >= scores[outliers[5],]$score,]$id)]
+
 credit <- credit[-(which(!is.na(scores[scores$score >= scores[outliers[5],]$score,]$id))),]
 credit.continuos <- credit[,-factor.indexes]
 credit.factors <- credit[,factor.indexes]
 
 #**************************** Outlier detection Mahalanobis ***********************************
-#outlier detection with mahalanobis 
+# Outlier detection with mahalanobis 
 # require(chemometrics)
 # outlier.scores <- Moutlier(credit[,-factor.indexes],quantile=0.975,plot=TRUE)
 # credit <- subset(credit,outlier.scores$md<outlier.scores$cutoff)
@@ -317,19 +334,24 @@ pairs(credit.continuos, main = "Default payment pair plot", col = (1:length(leve
 
 par(mfrow=c(1,2))
 # How many males and females do we have?
+
 initial.barplot(credit,SEX)
+
 # We have 34 % more females than males in our dataset.
 
 # How many Default's and Not-Defaults's do we have for each sex?
+
 grouped.count.plot(credit,SEX,default.payment.next.month)
 
 # It seems that females tend to have less default payments, 
 # lets compute the exact proportion to see if there is some kind of bias.
+
 freq.table <- (with(data = credit, table(SEX, default.payment.next.month)))
 p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
-cbind(freq.table, p.table)
+(cbind(freq.table, p.table))
 
 create.latex.table(df=cbind(freq.table, p.table),type="latex",caption="Y and Sex frequencies",file=glue(dataDir,"/y_sex.tex"),digits = 2)
+
 # As we see, the proportion of males with default payment is 0.242, and the proportion of females is 0.208.
 # Indeed, males in general have a higher tendency of default payment.
 
@@ -338,14 +360,18 @@ create.latex.table(df=cbind(freq.table, p.table),type="latex",caption="Y and Sex
 #***************************************************************************#
 
 par(mfrow=c(1,2))
-# a count of all the values to get an initial idea
+# A count of all the values to get an initial idea
+
 initial.barplot(credit,EDUCATION)
-# we can see that the 4 "unknown" values are very few, comparing them with the others
+
+# We can see that the 4 "unknown" values are very few, comparing them with the others
 # also university is most present in this data, so a better way to see this is to group them all.
 
 # a count check of all the education respect to default payment
+
 grouped.count.plot(credit,EDUCATION,default.payment.next.month)
-# university has the most population in both cases, but the tendency is to be not default,
+
+# University has the most population in both cases, but the tendency is to be not default,
 # so a prior assumption will be that university level koreans will be unable to fill their
 # debt obligations on time
 
@@ -364,17 +390,22 @@ create.latex.table(df=cbind(freq.table, p.table),type="latex",caption="Y and Edu
 #***************************************************************************#
 #                            2.6.3 Marriage                                 #
 #***************************************************************************#
+
 par(mfrow=c(1,2))
 # How are the levels of the variable distributed?
+
 initial.barplot(credit,MARRIAGE)
 
 # Basically we have 'Married' and 'Single' individuals, here we have the percentages of each type
+
 round(prop.table(table(credit$MARRIAGE)) * 100, digits = 1)
 
 # How many Default's and Not-Defaults's do we have for each type of marriage?
+
 grouped.count.plot(credit,MARRIAGE,default.payment.next.month)
 
 # Let's compute the exact proportion for each level to see if there is some kind of bias.
+
 freq.table <- (with(data = credit, table(MARRIAGE, default.payment.next.month)))
 p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
 cbind(freq.table, p.table)
@@ -391,28 +422,35 @@ create.latex.table(df=cbind(freq.table, p.table),type="latex",caption="Y and Mar
 #                                 2.6.3 Age                                 #
 #***************************************************************************#
 par(mfrow=c(1,2))
+
 # Even AGE is not categorical, we wanted to do an analysis to check how the age are related to the 
 # default or not default category
-# a count of all the values to get an initial idea
+# A count of all the values to get an initial idea
+
 initial.barplot(credit,AGE)
 
 grouped.count.plot(credit,AGE,default.payment.next.month)
 
 invisible(require(plyr))
 head(arrange(as.data.frame(table(credit$AGE)),desc(Freq)), n = 5)
-# from this analysis, it is obvious that the quantity of users of credit cards, are centered around
+
+# From this analysis, it is obvious that the quantity of users of credit cards, are centered around
 # 29 years old
 # Again a check of the proportions will be useful
+
 freq.table <- table(credit$AGE, credit$default.payment.next.month)
 p.table <- round(prop.table(freq.table, margin = 1), digits = 3)
 (age.df<-as.data.frame(cbind(age=row.names(p.table),freq.table, p.table)))
 
 head(arrange(age.df,desc(age.df$`Not default`)), n = 5)
-# in this case, the proportions for not default are around 31 years, somewhat closed from the total
+
+# In this case, the proportions for not default are around 31 years, somewhat closed from the total
 # around 29, but for 57 years, there is also a higher ratio in here, the default parameter is dominant
 # in all the cases
+
 head(arrange(age.df,desc(age.df$Default)), n = 5)
-# this ratio is somewhat scattered, but they are around 51 and 64 years old, the most default is 
+
+# This ratio is somewhat scattered, but they are around 51 and 64 years old, the most default is 
 # predominant.
 
 create.latex.table(df=head(arrange(age.df,desc(age.df$`Not default`)), n = 5),type="latex",caption="Y and Age Top 5 Not Default frequencies",file=glue(dataDir,"/y_age_not_default.tex"),digits = 2)
@@ -438,7 +476,7 @@ n<-nrow(credit[,-factor.indexes])
 p<-ncol(credit[,-factor.indexes])
 require(FactoMineR)
 e_ncp<-estim_ncp(credit[,-factor.indexes], ncp.min=0, ncp.max=p-1, scale=TRUE, method="GCV")
-ncp<-e_ncp$ncp
+(ncp<-e_ncp$ncp)
 
 credit.PCA <- PCA(credit,quali.sup = factor.indexes,ncp = ncp)
 summary(credit.PCA)
@@ -451,8 +489,6 @@ fviz_pca_var(credit.PCA, col.var="cos2") +
 #*****************************************************************************************#
 #                             Linear combination of predictors                            #
 #*****************************************************************************************#
-
-
 # Check importance of variables
 # Feature selection
 # Checking PCA
