@@ -94,13 +94,65 @@ dim(credit)
   # 5. Neural Networks
 
 
+
+# Test and Train separation -----------------------------------------------
+
+train.idx <- sample.int(nrow(credit), round(nrow(credit) * 0.8), replace = F)
+train <- credit[train.idx,]
+test <- credit[-train.idx,]
+
+# 80% Train - 20% Test
+
 # Logistic Regression Model -----------------------------------------------
 
-logReg <- glm (, data = credit, family = binomial(link=logit)) 
+# Let's start by fitting a Logistic Regression Model with all the variables:
 
+( logReg <- glm (default.payment.next.month ~ ., data = train, family = binomial(link=logit)) )
 
+# We observe that the weights assigned to the different variables have different orders of magnitude, 
+# which is something not desirable. As we saw during the EDA, maybe applying logarithms to some of the
+# variables could help.
 
+# Training error
 
+# Nevertheless, we use the model to do some predictions and compute a training error. Typing 'response'
+# in the prediction function will return us the predicted probabilities, it is not 'hard-assigning'
+# the observations to a class.
+pred <- predict (
+  object = logReg,
+  newdata = train,
+  type = 'response'
+                )
+# We set a probability threshold 'p' from which we will classify an observation to 'Default' 
+# or 'Not Default'.
+p <- 0.5
+predictions <- NULL
+predictions[pred >= p] <- 1
+predictions[pred < p] <- 0
+
+# We can compute now the confusion matrix
+(tab <- with(credit, table(Truth=default.payment.next.month[train.idx],Pred=predictions)))
+(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # 17.76 % of training error
+
+# Test error
+
+# We execute the same process but now using the test data.
+pred <- predict (
+  object = logReg,
+  newdata = test,
+  type = 'response'
+)
+
+# We set a probability threshold 'p' from which we will classify an observation to 'Default' 
+# or 'Not Default'.
+p <- 0.5
+predictions <- NULL
+predictions[pred >= p] <- 1
+predictions[pred < p] <- 0
+
+# We can compute now the confusion matrix
+(tab <- with(train, table(Truth=default.payment.next.month,Pred=predictions)))
+(error.test <- 100*(1-sum(diag(tab))/nrow(test))) # 
 
 
 
