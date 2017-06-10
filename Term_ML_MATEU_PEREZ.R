@@ -457,6 +457,13 @@ create.latex.table(df=head(arrange(age.df,desc(age.df$`Not default`)), n = 5),ty
 
 create.latex.table(df=head(arrange(age.df,desc(age.df$Default)), n = 5),type="latex",caption="Y and Age Top 5 Default frequencies",file=glue(dataDir,"/y_age_default.tex"),digits = 2)
 
+#*****************************************************************************************#
+#                                    Cluster Analysis                                     #
+#*****************************************************************************************#
+# simplied method that requiers more computational power, we need to do a stratified sampling before use it
+# require(NbClust)
+# nb <- NbClust(credit[,-factor.indexes], distance = "euclidean", min.nc = 2,max.nc = 10, method = "complete", index ="all")
+
 
 #*****************************************************************************************#
 #                            3. DERIVATION OF NEW VARIABLES                               #
@@ -482,9 +489,6 @@ fviz_pca_var(credit.PCA, col.var="cos2") +
 #*****************************************************************************************#
 #                             Linear combination of predictors                            #
 #*****************************************************************************************#
-summary(credit.log)
-
-summary(credit)
 # Check importance of variables
 # Feature selection
 # Checking PCA
