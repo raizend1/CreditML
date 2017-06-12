@@ -319,7 +319,7 @@ par(mfrow=c(1,1))
 
 # description of each continuos index with respect to default payment
 describeBy(credit.continuos, credit$default.payment.next.month)
-pairs(credit.continuos, main = "Default payment pair plot", col = (1:length(levels(credit$default.payment.next.month)))[unclass(credit$default.payment.next.month)])
+#pairs(credit.continuos, main = "Default payment pair plot", col = (1:length(levels(credit$default.payment.next.month)))[unclass(credit$default.payment.next.month)])
 
 #***************************************************************************#
 #       2.6 Detection of (correlation) of categorical variables             #
@@ -489,6 +489,134 @@ fviz_pca_var(credit.PCA, col.var="cos2") +
 #*****************************************************************************************#
 #                             Linear combination of predictors                            #
 #*****************************************************************************************#
+# Scores (i.e. principal coordinates) are in res.pca$ind$coord
+# The variance of the individuals' coordinates for a dimension corresponds to the eigenvalue of this dimension.
+
+# Loadings (i.e. standard coordinates) are not given by FactoMineR's methods. They return principal coordinates.
+# We have to calculate them by dividing variables' coordinates on a dimension by this dimension's eigenvalue's 
+# square root.
+credit.loadings<-sweep(credit.PCA$var$coord,2,sqrt(credit.PCA$eig[1:ncol(credit.PCA$var$coord),1]),FUN="/")
+
+loadings(credit.PCA)
+
+bill.indexes<-grepl("BILL_AMT", names(credit.continuos))
+pay.indexes<-grepl("BILL_AMT", names(credit.continuos))
+
+# We first check if the test and train samples are balanced
+rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(credit$default.payment.next.month))*100, function(u) noquote(sprintf('%.2f%%',u))))
+
+# As we can see, the distribution of the data is unequal, if we take train and test samples as it is, 
+# we could get the model to ignore one of the classes (in this case the Default one, as it is the smallest), 
+# so we need to solve this in a simple way, we will take at random the same number of Not Default samples as 
+# the Default ones. Once this is done, we can split this subset into train and test data.
+
+set.seed(555)
+nd.indexes<-sample(which(credit$default.payment.next.month == "Not default"),6081)
+d.indexes<-which(credit$default.payment.next.month == "Default")
+subsample.index<-sort(c(nd.indexes,d.indexes))
+
+table(credit[subsample.index,]$default.payment.next.month)
+
+credit.train <- sample(subsample.index, size = ceiling(length(subsample.index)*0.7))
+credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
+
+# Initial Logistic Regression Model -----------------------------------------------
+
+# Let's start by fitting a Logistic Regression Model with all the variables:
+
+logReg <- glm(default.payment.next.month ~ ., data = credit[credit.train,], family = binomial(link=logit))
+summary(logReg)
+
+# Then we try to simplify the model by eliminating the least important variables progressively 
+# using the step() algorithm which penalizes models based on the AIC value.
+
+logReg.step <- step(logReg) # Warning: It takes a while
+summary(logReg.step)
+
+# And then refit the model with the optimized model
+
+logReg <- glm(logReg.step$formula, data = credit[credit.train,], family = binomial(link = logit))
+summary(logReg)
+
+# We observe that the weights assigned to the different variables have different orders of magnitude, 
+# which is something not desirable. As we saw during the EDA, maybe applying logarithms to some of the
+# variables could help.
+
+# Training error
+
+# Nevertheless, we use the model to do some predictions and compute a training error. Typing 'response'
+# in the prediction function will return us the predicted probabilities, it is not 'hard-assigning'
+# the observations to a class.
+
+pred <- predict (
+  object = logReg,
+  newdata = train,
+  type = 'response'
+)
+# We set a probability threshold 'p' from which we will classify an observation to 'Default' 
+# or 'Not Default'.
+
+p <- 0.5
+predictions <- NULL
+predictions[pred >= p] <- 1
+predictions[pred < p] <- 0
+
+# We can compute now the confusion matrix
+
+(tab <- with(credit, table(Truth=default.payment.next.month[train.idx],Pred=predictions)))
+(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # ~17 % of training error
+
+# Test error
+
+# We execute the same process but now using the test data.
+
+pred <- predict (
+  object = logReg,
+  newdata = test,
+  type = 'response'
+)
+
+# We set a probability threshold 'p' from which we will classify an observation to 'Default' 
+# or 'Not Default'.
+
+p <- 0.5
+predictions <- NULL
+predictions[pred >= p] <- 1
+predictions[pred < p] <- 0
+
+# We can compute now the confusion matrix for the test data.
+
+(tab <- with(test, table(Truth=default.payment.next.month,Pred=predictions)))
+(error.test <- 100*(1-sum(diag(tab))/nrow(test))) # ~ 17 % of error as well.
+
+# Training error is very similar to test error, which means that we are probably 
+# not overfitting the dataset with the model. It is lower from the threshold that we initially
+# marked, 22%.
+
+# Load some libraries to evaluate the binary classifier
+
+library(pROC)
+library(caret) 
+library(e1071)
+
+# Despite that, the classifier predicts many 'Default' costumers with 'Not default'. Let's compute
+# the precision and the accuracy of the model. 
+
+levels <- c('Not default', 'Default')
+truth <- test$default.payment.next.month
+predictions <- as.factor(predictions)
+levels(predictions) <- c('Not default', 'Default')
+
+confusionMatrix(table(truth, predictions))
+
+# Plot the ROC curve
+credit$prob <- pred
+g <- roc(default.payment.next.month ~ prob, data = credit)
+plot(g)
+
+# Not very good results...
+
+
 # Check importance of variables
 # Feature selection
 # Checking PCA
