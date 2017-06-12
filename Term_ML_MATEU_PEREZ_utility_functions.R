@@ -393,7 +393,7 @@ cbindPad <- function(...){
 #' 
 #' @examples
 linear.combination <- function(vectors,scalars){
-  result<-vectors
+  result<-round(as.data.frame(apply(vectors,1,mean)),digits = 0)
 }
 
 ####################ORIGINAL FUNCTIONS########################################
