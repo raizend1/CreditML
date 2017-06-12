@@ -287,6 +287,8 @@ credit <- credit[-(which(!is.na(scores[scores$score >= scores[outliers[5],]$scor
 credit.continuos <- credit[,-factor.indexes]
 credit.factors <- credit[,factor.indexes]
 
+
+
 #**************************** Outlier detection Mahalanobis ***********************************
 # Outlier detection with mahalanobis 
 # require(chemometrics)

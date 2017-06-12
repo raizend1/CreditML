@@ -213,6 +213,59 @@ plot(g)
 
 
 
+<<<<<<< HEAD
+=======
+# Support Vector Machine with Radial Basis Function Kernel ------------------------------------------
+
+# We will use the very powerful 'train' function to train a SVM with a Radial Basis Function acting
+# as a Kernel function. First we will adapt our data to the arguments of the function.
+
+library(kernlab)
+library(caret)
+library(tidyverse)
+
+svmModelInfo <- getModelInfo(model = "svmRadial", regex = FALSE)[[1]]
+names(svmModelInfo)
+
+# As a first training of the SVM model, we won't take into account the variables PAY_*. The variables
+# BILL_ATM* and PAY_ATM* have been gathered all together into a single variable, BILL_ATM_TOTAL and
+# PAY_ATM_TOTAL, as we have demonstrated through the corelation matrix and the PCA that they are very
+# related. To gather them we have just applied an 'average' function for each individual.
+
+# Matrix of predictors with the new defined variables
+
+train$BILL_ATM_TOTAL <- with(train, (BILL_AMT1 + BILL_AMT2 + BILL_AMT3 + BILL_AMT4 + BILL_AMT5 + BILL_AMT6) / 6)
+train$PAY_ATM_TOTAL <- with(train, (PAY_AMT1 + PAY_AMT2 + PAY_AMT3 + PAY_AMT4 + PAY_AMT5 + PAY_AMT6) / 6)
+
+
+predictors_SVM <- train[c(1,5,25,26)]
+target_SVM <- train[,24]
+
+summary(predictors_SVM)
+# train %>% mutate(
+#   BILL_ATM_TOTAL = (BILL_AMT1 + BILL_AMT2 + BILL_AMT3 + BILL_AMT4 + BILL_AMT5 + BILL_AMT6) / 6 ,
+#   PAY_ATM_TOTAL = (PAY_AMT1 + PAY_AMT2 + PAY_AMT3 + PAY_AMT4 + PAY_AMT5 + PAY_AMT6) / 6
+# ) %>% 
+# select(LIMIT_BAL, AGE, BILL_ATM_TOTAL, PAY_ATM_TOTAL)
+
+
+# Training of the SVM with basis radial function
+train(
+  x = predictors_SVM,
+  y = target_SVM,
+  method = 'svmRadial',
+  metric = 'Accuracy',
+  maximize = TRUE
+)
+
+
+# Neural Networks ------------------------------------------
+
+
+# Random Forests ----------------------------------------------------------
+
+
+>>>>>>> f54b1c212ef645bed0210c2e3cd53ca0c2e9ea93
 
 
 
