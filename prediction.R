@@ -20,7 +20,7 @@ rm(list=ls(all=TRUE))
 dev.off()
 set.seed(123)
 
-setwd('/Users/cesc/Documents/UPC MIRI-FIB/2Q/Machine Learning/Project/CreditML_Project/code/')
+#setwd('/Users/cesc/Documents/UPC MIRI-FIB/2Q/Machine Learning/Project/CreditML_Project/code/')
 source("Term_ML_MATEU_PEREZ_utility_functions.R")
 source("workingDir.R")
 setwd(codeDir)
