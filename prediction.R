@@ -25,6 +25,9 @@ source("Term_ML_MATEU_PEREZ_utility_functions.R")
 source("workingDir.R")
 setwd(codeDir)
 
+# Load the data from the preprocessing and EDA file
+load(glue(dataDir,"/CreditData.RData"))
+
 # Needed libraries
 library(ggplot2)
 library(mice)
@@ -119,7 +122,8 @@ summary(logReg)
 # Then we try to simplify the model by eliminating the least important variables progressively 
 # using the step() algorithm which penalizes models based on the AIC value.
 
-# logReg.step <- step(logReg) # Warning: It takes a while
+# Warning: It takes a while!
+# logReg.step <- step(logReg) 
 summary(logReg.step)
 
 # And then refit the model with the optimized model
@@ -129,7 +133,7 @@ summary(logReg)
 
 # We observe that the weights assigned to the different variables have different orders of magnitude, 
 # which is something not desirable. As we saw during the EDA, maybe applying logarithms to some of the
-# variables could help.
+# variables could help...
 
 # Training error
 
@@ -168,7 +172,7 @@ pred <- predict (
 # We set a probability threshold 'p' from which we will classify an observation to 'Default' 
 # or 'Not Default'.
 
-p <- 0.5
+p <- 0.5 # This does not need to be 0.5!
 predictions <- NULL
 predictions[pred >= p] <- 1
 predictions[pred < p] <- 0
@@ -214,5 +218,52 @@ plot(g)
 
 
 
+
+
+# Support Vector Machine with Radial Basis Function Kernel ------------------------------------------
+
+# We will use the very powerful 'train' function to train a SVM with a Radial Basis Function acting
+# as a Kernel function. First we will adapt our data to the arguments of the function.
+
+library(kernlab)
+library(caret)
+library(tidyverse)
+
+svmModelInfo <- getModelInfo(model = "svmRadial", regex = FALSE)[[1]]
+names(svmModelInfo)
+
+# As a first training of the SVM model, we won't take into account the variables PAY_*. The variables
+# BILL_ATM* and PAY_ATM* have been gathered all together into a single variable, BILL_ATM_TOTAL and
+# PAY_ATM_TOTAL, as we have demonstrated through the corelation matrix and the PCA that they are very
+# related. To gather them we have just applied an 'average' function for each individual.
+
+stopCluster(cl)
+
+# Matrix of predictors with the new defined variables
+predictors <- as.matrix(
+  train %>% mutate(
+  BILL_ATM_TOTAL = (BILL_AMT1 + BILL_AMT2 + BILL_AMT3 + BILL_AMT4 + BILL_AMT5 + BILL_AMT6) / 6 ,
+  PAY_ATM_TOTAL = (PAY_AMT1 + PAY_AMT2 + PAY_AMT3 + PAY_AMT4 + PAY_AMT5 + PAY_AMT6) / 6
+  ) %>% 
+  select(LIMIT_BAL, AGE, BILL_ATM_TOTAL, PAY_ATM_TOTAL)
+)
+
+# Vector with the real classes
+target <- as.matrix(
+  train %>% select(default.payment.next.month))
+
+
+# Training of the SVM with basis radial function
+
+train(
+  x = predictors,
+  y = target,
+  method = 'svmRadial',
+  metric = 'Accuracy',
+  maximize = TRUE
+)
+
+dim(target)
+dim(predictors)
 
 
