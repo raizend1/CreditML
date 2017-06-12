@@ -381,6 +381,21 @@ cbindPad <- function(...){
   return(do.call(cbind,rs))
 }
 
+#' @title Creates a linear combinations of the given vectors
+#'
+#' @description
+#' Creates a linear combinations of the given vectors and returns a vector linear combined of them. The scalars must be equal to 
+#' the total number of vector inputed.
+#' @param vectors Input vectors to be combined
+#' @param scalars Scalars to be multiplied to obtain the linear combination
+#' 
+#' @return A vector that represents the linear combination of the others.
+#' 
+#' @examples
+linear.combination <- function(vectors,scalars){
+  result<-vectors
+}
+
 ####################ORIGINAL FUNCTIONS########################################
 # Original plotting·
 # ggplot(credit, aes(x = 0, y = LIMIT_BAL)) +
