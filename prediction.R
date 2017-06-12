@@ -212,9 +212,6 @@ plot(g)
 # Logistic Regression Model v2 ---------------------------------
 
 
-
-<<<<<<< HEAD
-=======
 # Support Vector Machine with Radial Basis Function Kernel ------------------------------------------
 
 # We will use the very powerful 'train' function to train a SVM with a Radial Basis Function acting
@@ -263,9 +260,6 @@ train(
 
 
 # Random Forests ----------------------------------------------------------
-
-
->>>>>>> f54b1c212ef645bed0210c2e3cd53ca0c2e9ea93
 
 
 
