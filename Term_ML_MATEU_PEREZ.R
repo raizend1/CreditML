@@ -527,10 +527,22 @@ credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 require(kernlab)
 require(caret)
 
-svm.tune <- train(x=credit.continuos[credit.train,-24], y= credit.continuos[credit.train,24], 
+credit.x <- credit.continuos[,-24]
+credit.y <- credit$default.payment.next.month
+start.time<-proc.time()
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+svm.tune <- train(x=credit.x[credit.train,], y= credit.y[credit.train], 
                   method = "svmRadial", tuneLength = 7, preProc = c("center","scale"))
+stopCluster(cl)
+end.time<-proc.time()
+time.svm<- end.time-start.time
 
-# Check importance of variables
+nnet.tune<-train(credit.x[credit.train,], credit.y[credit.train],
+      method = "nnet",
+      preProcess = c("pca"),
+      trControl= trainControl(method = "cv", number = 10),
+      tuneGrid = expand.grid(.size=c(1,5,10, 15, 20, 25, 30, 35, 40),.decay=c(0,0.001,0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 3, 4)))# Check importance of variables
 
 # Feature selection
 # Checking PCA
