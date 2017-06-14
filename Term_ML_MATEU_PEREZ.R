@@ -519,86 +519,44 @@ require(caret)
 
 credit.x <- credit.continuos[,-24]
 credit.y <- credit$default.payment.next.month
+
+# We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
+# To have more information on how well this method works with this configuration, we want to be able to have a 
+# look at the folds, and for each of them how close the predicted values were to the actual values, so we set the 
+# savePred parameter as true.
+
 start.time<-proc.time()
-cl <- makeCluster(detectCores())
-registerDoParallel(cl)
+svm.train.control<- trainControl(method = "repeatedcv",number = 10,repeats = 5,savePred=TRUE)
 svm.tune <- train(x=credit.x[credit.train,], y= credit.y[credit.train], 
-                  method = "svmRadial", tuneLength = 7, preProc = c("center","scale"))
-stopCluster(cl)
+                  method = "svmRadial", trControl = svm.train.control)
 end.time<-proc.time()
 time.svm<- end.time-start.time
+
+# SVM First round results
+time.svm
+# user  system elapsed 
+# 1.52    0.09    1.67
+head(svm.tune$pred)
+#      pred         obs      rowIndex      sigma    C    Resample
+# 1 Not default Not default       11    0.09403567 0.25 Fold01.Rep1
+# 2 Not default Not default       17    0.09403567 0.25 Fold01.Rep1
+# 3     Default Not default       20    0.09403567 0.25 Fold01.Rep1
+# 4     Default     Default       30    0.09403567 0.25 Fold01.Rep1
+# 5     Default Not default       87    0.09403567 0.25 Fold01.Rep1
+# 6 Not default     Default       94    0.09403567 0.25 Fold01.Rep1
+svm.tune
+# Tuning parameter 'sigma' was held constant at a value of 0.09403567
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.09403567 and C = 0.25.
+
+# Now we can proceed with the second round by refined the parameter space
+# using the best values of sigma and C
+grid <- expand.grid(sigma = c(0.075,0.08, 0.095, 0.1,0.15),
+                    C = c(0.05, 0.15, 0.25, 0.35, 0.4))
+
 
 nnet.tune<-train(credit.x[credit.train,], credit.y[credit.train],
       method = "nnet",
       preProcess = c("pca"),
       trControl= trainControl(method = "cv", number = 10),
       tuneGrid = expand.grid(.size=c(1,5,10, 15, 20, 25, 30, 35, 40),.decay=c(0,0.001,0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 3, 4)))# Check importance of variables
-
-# Feature selection
-# Checking PCA
-# First add the variable to check them as supplementary
-credit.continuos.log$default.payment.next.month <- credit$default.payment.next.month
-require(FactoMineR)
-credit.PCA1 <- PCA(credit.continuos.log,quali.sup = 14)
-
-credit.glm<-glm(default.payment.next.month ~.,data = credit.continuos.log)
-
-#prediction directly with log
-
-NNModel2 <- train(Train[,-10], trainResponse,
-                  method = "nnet",
-                  preProcess = c("pca"),
-                  trControl= trainControl(method = "cv", number = 10),
-                  tuneGrid = expand.grid(.size=c(1,5,10, 15, 20, 25, 30, 35, 40),.decay=c(0,0.001,0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 3, 4)))
-
-n.rows <- nrow(credit)
-n.cols <- ncol(credit)
-
-#initial linear model -> this must be reduced either by factor or dimensionality
-credit.lm<-lm(default.payment.next.month~.,data = credit)
-plot(credit[,-10],credit[,10])
-abline(credit.lm)
-
-# get just one third for validation, the rest to train
-test.indexes <- sample(1:n.rows,size = floor(n.rows*0.3),replace = FALSE)
-credit.test <- credit[test.indexes,]
-credit.train <- credit[-test.indexes,]
-
-# then we check if the test and train samples are balanced
-table(credit$default.payment.next.month)
-
-# method to do cross validation for tunning
-
-#array for the best parameters
-c.best <- c()
-epsilon.best <- c()
-gamma.best<-c()
-polynomial.degree.best<-c()
-
-#array for computation time
-compu.time<- c()
-
-# use svm
-model2 <- svm(credit.train[,-25],credit.train[,25],epsilon=0.01,gamma=200, C=100)
-lines(credit.train[,-25],predict(model2,credit.train[,-25]),col="green")
-credit.svm<-ksvm(credit.train[,-25],credit.train[,25],epsilon=0.01, C=100)
-
-
-library(rpart)
-library(rpart.plot)
-library(rattle)
-p2 = rpart(default.payment.next.month ~ ., data=credit, control=rpart.control(cp=0.001, xval=10))
-p2
-plot(p2)
-
-# THE SEQUENCE OF TREES WITH THEIR COMPLEXITY PARAMETER AND COMPUTED ERROR IN THE TRAINING SAMPLE AND BY CROSSVALIDATION
-printcp(p2)
-
-plot(p2$cptable[,2],p2$cptable[,3],type="l",xlab="size of the tree",ylab="Relative impurity",main="R(t)")
-lines(p2$cptable[,2],p2$cptable[,4],col="blue")
-legend("topright",c("R(T)training","R(T)cv"),col=c("black","blue"),lty=1)
-plotcp(p2)
-
-#*****************************************************************************************#
-#                               Definition of clusters                                    #
-#*****************************************************************************************#
