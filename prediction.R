@@ -14,17 +14,6 @@
 
 
 # Initialization ----------------------------------------------------------
-
-# Initialise workspace, remove old objects for safety resons and define a utility function
-rm(list=ls(all=TRUE))
-dev.off()
-set.seed(123)
-
-#setwd('/Users/cesc/Documents/UPC MIRI-FIB/2Q/Machine Learning/Project/CreditML_Project/code/')
-source("Term_ML_MATEU_PEREZ_utility_functions.R")
-source("workingDir.R")
-setwd(codeDir)
-
 # Needed libraries
 library(ggplot2)
 library(mice)
@@ -41,46 +30,8 @@ library(knitcitations)
 library(doParallel)
 library(gridExtra)
 
-
-# Data Loading and Preprocessing ------------------------------------------
-
 # Read initial data
 load('Environment_EDA.RData')
-
-str(credit)
-dim(credit)
-# [1] 30000    25
-
-# We have a dataset with 30000 rows and 25 variables. All variables are defined as continuous integers,
-# and some of them need to be changed to categorical.
-
-# Change 'SEX', 'EDUCATION', 'MARRIAGE', 'AGE' and 'default.payment.next.month' to categorical
-factor.indexes <- which(names(credit) %in% c("PAY_0","PAY_2","PAY_3","PAY_4","PAY_5","PAY_6","SEX","EDUCATION","MARRIAGE","default.payment.next.month")) 
-credit[,factor.indexes] <- lapply(credit[,factor.indexes], as.factor)
-
-# Remove unnecesary data: ID
-credit<- credit[,-1]
-factor.indexes<-factor.indexes-1 # update indexes of the factors
-
-# Rename the levels of the categorical values for better unsderstanding
-levels(credit$SEX) <- c("Male", "Female")
-levels(credit$EDUCATION) <- c("Uk1", "Grad.", "Univ.", "H.School", "Uk2", "Uk3", "Uk4")
-levels(credit$MARRIAGE) <- c("Other", "Married", "Single", "Divorced")
-levels(credit$default.payment.next.month) <- c("Not default", "Default")
-# rename factor variables from columns PAY 6 to 11
-for(i in 6:11){
-  # levels(credit[,i]) <- c("No consumption", "Paid in full","Use of revolving credit","Payment delay 1M","Payment delay 2M",
-  #                         "Payment delay 3M","Payment delay 4M","Payment delay 5M","Payment delay 6M","Payment delay 7M",
-  #                         "Payment delay 8M")
-  levels(credit[,i]) <- c("NC", "PF","URC","PD1","PD2",
-                          "PD3","PD4","PD5","PD6","PD7","PD8")
-}
-
-str(credit)
-summary(credit)
-dim(credit)
-
-
 
 # Introduction to the prediction section ----------------------------------
 
@@ -88,11 +39,11 @@ dim(credit)
 # 'Default' and 'Not Default'. We have 23 different predictors: 14 are continuous and 9 are categorical. 
 # We will try different classification models and see which one adapts better to our problem:
 
-  # 1. Logistic Regression
-  # 2. Linear/Quadratic Discriminant Analysis (LDA/QDA)
-  # 3. Support Vector Machines (SVM)
-  # 4. Random Forests
-  # 5. Neural Networks
+# 1. Logistic Regression
+# 2. Linear/Quadratic Discriminant Analysis (LDA/QDA)
+# 3. Support Vector Machines (SVM)
+# 4. Random Forests
+# 5. Neural Networks
 
 # Before going into the first type of model, we wanted to know which is our upper error threshold.
 # Let's see how much error we would get if we'd always predict the majority class.
@@ -103,13 +54,94 @@ table(credit$default.payment.next.month)
 # The classifier that always predicts the majority class ('Not default') would give us a 22.12% of error.
 # This is our threshold. Any model with a higher error than this can be automatically discarded.
 
-# Test and Train separation -----------------------------------------------
-
-train.idx <- sample.int(nrow(credit), round(nrow(credit) * 0.8), replace = F)
-train <- credit[train.idx,]
-test <- credit[-train.idx,]
-
 # 80% Train - 20% Test
+
+#*****************************************************************************************#
+#                                        4. Modeling                                      #
+#*****************************************************************************************#
+
+# We first check if the test and train samples are balanced
+rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(credit$default.payment.next.month))*100, function(u) noquote(sprintf('%.2f%%',u))))
+# Not default Default 
+# [1,] "23167"     "6533"  
+# [2,] "78.00%"    "22.00%"
+
+# As we can see, the distribution of the data is unequal, if we take train and test samples as it is, 
+# we could get the model to ignore one of the classes (in this case the Default one, as it is the smallest), 
+# so we need to solve this in a simple way, we will take at random the same number of Not Default samples as 
+# the Default ones. Once this is done, we can split this subset into train and test data.
+
+set.seed(555)
+nd.indexes<-sample(which(credit$default.payment.next.month == "Not default"),6081)
+d.indexes<-which(credit$default.payment.next.month == "Default")
+subsample.index<-sort(c(nd.indexes,d.indexes))
+
+table(credit[subsample.index,]$default.payment.next.month)
+
+credit.train <- sample(subsample.index, size = ceiling(length(subsample.index)*0.8))
+credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
+
+
+#*****************************************************************************************#
+#                                        SVM Definition                                   #
+#*****************************************************************************************#
+require(kernlab)
+require(caret)
+
+credit.x <- credit.continuos[credit.train,-24]
+credit.y <- credit[credit.train,24]
+
+# We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
+# To have more information on how well this method works with this configuration, we want to be able to have a 
+# look at the folds, and for each of them how close the predicted values were to the actual values, so we set the 
+# savePred parameter as true.
+
+start.time<-proc.time()
+svm.train.control<- trainControl(method = "repeatedcv",number = 10,repeats = 5,savePred=TRUE)
+svm.tune <- train(x=credit.x, y= credit.y, 
+                  method = "svmRadial", trControl = svm.train.control)
+end.time<-proc.time()
+time.svm<- end.time-start.time
+
+# SVM First round results
+time.svm
+# user  system elapsed 
+# 1.52    0.09    1.67
+head(svm.tune$pred)
+#      pred         obs      rowIndex      sigma    C    Resample
+# 1 Not default Not default       11    0.09403567 0.25 Fold01.Rep1
+# 2 Not default Not default       17    0.09403567 0.25 Fold01.Rep1
+# 3     Default Not default       20    0.09403567 0.25 Fold01.Rep1
+# 4     Default     Default       30    0.09403567 0.25 Fold01.Rep1
+# 5     Default Not default       87    0.09403567 0.25 Fold01.Rep1
+# 6 Not default     Default       94    0.09403567 0.25 Fold01.Rep1
+svm.tune
+# Tuning parameter 'sigma' was held constant at a value of 0.09403567
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.09403567 and C = 0.25.
+
+# Now we can proceed with the second round by refined the parameter space
+# using the best values of sigma and C
+grid <- expand.grid(sigma = c(0.075,0.08, 0.095, 0.1,0.15),
+                    C = c(0.05, 0.15, 0.25, 0.35, 0.4))
+
+start.time<-proc.time()
+svm.tune <- train(x=credit.x[credit.train,], y= credit.y[credit.train], 
+                  method = "svmRadial", tuneGrid = grid)
+end.time<-proc.time()
+time.svm<- end.time-start.time
+
+
+nnet.tune<-train(credit.x[credit.train,], credit.y[credit.train],
+                 method = "nnet",
+                 preProcess = c("pca"),
+                 trControl= trainControl(method = "cv", number = 10),
+                 tuneGrid = expand.grid(.size=c(1,5,10, 15, 20, 25, 30, 35, 40),.decay=c(0,0.001,0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 3, 4)))# Check importance of variables
+
+
+
+
+
 
 # Initial Logistic Regression Model -----------------------------------------------
 
