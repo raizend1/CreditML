@@ -45,8 +45,8 @@ library(gridExtra)
 # Data Loading and Preprocessing ------------------------------------------
 
 # Read initial data
-data.path <- glue(dataDir,"/","default_of_credit_card_clients.csv")
-credit <- read.table(data.path, header = TRUE,sep = ";")
+load('Environment_EDA.RData')
+
 str(credit)
 dim(credit)
 # [1] 30000    25
@@ -79,6 +79,8 @@ for(i in 6:11){
 str(credit)
 summary(credit)
 dim(credit)
+
+
 
 # Introduction to the prediction section ----------------------------------
 
@@ -257,6 +259,50 @@ train(
 
 
 # Neural Networks ------------------------------------------
+
+library(nnet)
+
+model.nnet <- nnet( ~.,
+                   data = Admis, 
+                   subset=learn, 
+                   size=20,
+                   maxit=200)
+## Let's start by standardizing the inputs; this is important to avoid network stagnation (premature convergence)
+
+
+
+## For a specific model, in our case the neural network, the function train() in {caret} 
+# uses a "grid" of model parameters and trains using a given resampling method (in our case we 
+# will be using 10x10 CV). All combinations are evaluated, and the best one (according to 10x10 CV) 
+# is chosen and used to construct a final model, which is refit using the whole training set
+
+## Thus train() returns the constructed model (exactly as a direct call to nnet() would)
+
+## In order to find the best network architecture, we are going to explore two methods:
+
+## a) Explore different numbers of hidden units in one hidden layer, with no regularization
+## b) Fix a large number of hidden units in one hidden layer, and explore different regularization values (recommended)
+
+## doing both (explore different numbers of hidden units AND regularization values)
+# is usually a waste of computing resources (but notice that train() would admit it)
+
+nnet_model <- train (admit ~.,
+                        data = train,
+                        method='nnet', 
+                        maxit = 500, 
+                        trace = FALSE,
+                        tuneGrid = expand.grid(.size=sizes,.decay=0)
+                     )
+
+
+
+################ Neural Network plotting function by fadwa123 ##################
+library(devtools)
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+################################################################################
+
+
+
 
 
 # Random Forests ----------------------------------------------------------
