@@ -193,8 +193,8 @@ print(sum)
 # Paco: To deal with negative values, we use log modulus transformation => L(X)=sign(x)*log(|x|+1)
 # in the variable, like this
 
-credit.log<-log.modulus(credit,5)
-grid.plot(credit.log,15)
+# credit.log<-log.modulus(credit,5)
+# grid.plot(credit.log,15)
 
 initial.histogram(credit,BILL_AMT1,FALSE)
 initial.boxplot(credit,BILL_AMT1,FALSE)
@@ -230,19 +230,20 @@ initial.boxplot(credit,BILL_AMT1,FALSE)
 # Let's check the distribution of all the variables. For the continuous ones we can plot an histogram, 
 # for the categorical ones, a barplot with the distribution within the levels of the variable.
 
-# grid.plot(credit,15)
-#save.plot(grid.plot(credit,15),"Variable_Distribution.jpeg","jpeg",plotDir,"1500","1500","110")
-#setwd(codeDir)
+grid.plot(credit,15)
+save.plot(grid.plot(credit,15),"Variable_Distribution.jpeg","jpeg",plotDir,"1500","1500","110")
+setwd(codeDir)
 
 # With this plot, we can see that the continuous data is very skewed, and not normal at all, we will apply some 
 # transformations to make the data more "normal"
 
 # We don't need to apply any standardization, all the continuous predictors are in NT Dollars
-# First, apply log modulus transformation in an attempt to normalize data and then plot
+# But we need to apply log modulus transformation in an attempt to normalize data in terms of their orders of magnitude,
+# Then we will plot and check how the data hias changed
 
-# credit<-log.modulus(credit,5)
-# grid.plot(credit,15)
-# save.plot(grid.plot(credit,15),"Variable_Distribution_Log.jpeg","jpeg",plotDir,"1500","1500","110")
+credit<-log.modulus(credit,5)
+grid.plot(credit,15)
+save.plot(grid.plot(credit,15),"Variable_Distribution_Log.jpeg","jpeg",plotDir,"1500","1500","110")
 
 # Just Isolating each data and show the difference after and before plotting
 
@@ -265,47 +266,30 @@ require(DMwR)
 outlier.scores <- lofactor(credit.continuos[,-2], k=10) # Warning: This takes a while!
 
 # We cannot plot, there are NaN, infinite values, possible cause is to have more repeated values than neighbours k
-
 plot(density(outlier.scores))
 
-# Pick top 10 as outliers
-
-(outliers <- order(outlier.scores, decreasing=T)[1:10])
+# Pick top 5 as outliers
+(outliers <- order(outlier.scores, decreasing=T)[1:5])
 hist(outliers)
 
 # Which are the outliers?
-
 print(outliers)
 
-# We create a table of scores and id, to remove the supossed outliers
-
+# We create a table of scores and id, to check the "oulier" values
 scores <- cbind.data.frame(score = outlier.scores,id = rownames(credit.continuos))
 
 # Credit <- credit[-as.numeric(scores[scores$score >= scores[outliers[5],]$score,]$id)]
 
-credit <- credit[-(which(!is.na(scores[scores$score >= scores[outliers[5],]$score,]$id))),]
-credit.continuos <- credit[,-factor.indexes]
-credit.factors <- credit[,factor.indexes]
-
-
-
-#**************************** Outlier detection Mahalanobis ***********************************
-# Outlier detection with mahalanobis 
-# require(chemometrics)
-# outlier.scores <- Moutlier(credit[,-factor.indexes],quantile=0.975,plot=TRUE)
-# credit <- subset(credit,outlier.scores$md<outlier.scores$cutoff)
-# 
-# # update of continuous and categorical subsets
-# credit.continuos<-credit[,-factor.indexes]
-# credit.factors<-credit[,factor.indexes]
-# 
-# #cleaning up the house
-# remove(outlier.scores)
-# 
-# save.plot(Moutlier(credit[,-factor.indexes],quantile=0.975,plot=TRUE),"Mahalanobis_outlier_detection.jpeg","jpeg",plotDir,"1500","900","150")
-
-# Altought, from all this, in some cases, they're could be just rich people in some variables, 
+# We can take out the outliers, but according to our preprocessing, the values had been already treated with a 
+# log modulus transformation, so the outliers are treated and we don't consider appropiate to lose more information
+# of the dataset, instead, use a robust method to process the data. 
+# From all this, in some cases, they're could be just rich people in some variables, 
 # or really indebted people in others
+
+# credit <- credit[-(which(!is.na(scores[scores$score >= scores[outliers[5],]$score,]$id))),]
+# credit.continuos <- credit[,-factor.indexes]
+# credit.factors <- credit[,factor.indexes]
+
 
 #***************************************************************************#
 #              2.5 Detection of most correlated variables                   #
@@ -316,8 +300,13 @@ corrplot(cor(credit[,-factor.indexes]), method="circle")
 corrplot(cor(credit[,-factor.indexes]), method="number")
 par(mfrow=c(1,1))
 
-# from the correlation calculus, we can see that there is a clear relationship between the values of BILL_AMT(x),
-# and BILL_AMT(x+1), so we can apply a dimensionality reduction technique, like pca for example, on this values
+# Before log modulus: from the correlation calculus, we can see that there is a clear relationship 
+# between the values of BILL_AMT(x), and BILL_AMT(x+1), so we can apply a dimensionality reduction technique, 
+# like pca for example, on this values.
+
+# After log modulus: there is no evidence of strong correlation between the predictors, BILL_AMT are somewhat
+# correlated between them and also the BILL_AMT and PAY_AMT from the same month, we will use PCA to discover further
+# lineaar combinations
 
 # description of each continuos index with respect to default payment
 describeBy(credit.continuos, credit$default.payment.next.month)
@@ -466,13 +455,8 @@ create.latex.table(df=head(arrange(age.df,desc(age.df$Default)), n = 5),type="la
 # require(NbClust)
 # nb <- NbClust(credit[,-factor.indexes], distance = "euclidean", min.nc = 2,max.nc = 10, method = "complete", index ="all")
 
-
 #*****************************************************************************************#
-#                            3. DERIVATION OF NEW VARIABLES                               #
-#*****************************************************************************************#
-
-#*****************************************************************************************#
-#                                    PCA Construction                                     #
+#                                 3. PCA Construction                                     #
 #*****************************************************************************************#
 n<-nrow(credit[,-factor.indexes])
 p<-ncol(credit[,-factor.indexes])
@@ -488,9 +472,6 @@ require(factoextra)
 fviz_pca_var(credit.PCA, col.var="cos2") +
   scale_color_gradient2(low="white", mid="blue", high="red", midpoint=0.5) + theme_minimal()
 
-#*****************************************************************************************#
-#                             Linear combination of predictors                            #
-#*****************************************************************************************#
 # Scores (i.e. principal coordinates) are in res.pca$ind$coord
 # The variance of the individuals' coordinates for a dimension corresponds to the eigenvalue of this dimension.
 
@@ -504,8 +485,15 @@ pay.indexes<-grepl("PAY_AMT", names(credit.continuos))
 
 result<-linear.combination(credit.continuos[,bill.indexes],credit.loadings[bill.indexes,1])
 
+#*****************************************************************************************#
+#                                        4. Modeling                                      #
+#*****************************************************************************************#
+
 # We first check if the test and train samples are balanced
 rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(credit$default.payment.next.month))*100, function(u) noquote(sprintf('%.2f%%',u))))
+# Not default Default 
+# [1,] "23167"     "6533"  
+# [2,] "78.00%"    "22.00%"
 
 # As we can see, the distribution of the data is unequal, if we take train and test samples as it is, 
 # we could get the model to ignore one of the classes (in this case the Default one, as it is the smallest), 
