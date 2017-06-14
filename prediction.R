@@ -33,6 +33,7 @@ library(gridExtra)
 # Read initial data
 load('Environment_EDA.RData')
 
+
 # Introduction to the prediction section ----------------------------------
 
 # In this project, we want to predict a binary variable. 'Default.payment.next.month' has two different levels: 
@@ -54,11 +55,7 @@ table(credit$default.payment.next.month)
 # The classifier that always predicts the majority class ('Not default') would give us a 22.12% of error.
 # This is our threshold. Any model with a higher error than this can be automatically discarded.
 
-# 80% Train - 20% Test
-
-#*****************************************************************************************#
-#                                        4. Modeling                                      #
-#*****************************************************************************************#
+# Train and test splitting ------------------------------------------------
 
 # We first check if the test and train samples are balanced
 rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(credit$default.payment.next.month))*100, function(u) noquote(sprintf('%.2f%%',u))))
@@ -82,14 +79,16 @@ credit.train <- sample(subsample.index, size = ceiling(length(subsample.index)*0
 credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 
 
-#*****************************************************************************************#
-#                                        SVM Definition                                   #
-#*****************************************************************************************#
+
+# Support Vector Machine --------------------------------------------------
+
 require(kernlab)
 require(caret)
 
-credit.x <- credit.continuos[credit.train,-24]
+credit.x <- credit[credit.train,-24]
 credit.y <- credit[credit.train,24]
+
+
 
 # We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
 # To have more information on how well this method works with this configuration, we want to be able to have a 
@@ -139,15 +138,13 @@ nnet.tune<-train(credit.x[credit.train,], credit.y[credit.train],
                  tuneGrid = expand.grid(.size=c(1,5,10, 15, 20, 25, 30, 35, 40),.decay=c(0,0.001,0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 3, 4)))# Check importance of variables
 
 
-
-
-
-
-# Initial Logistic Regression Model -----------------------------------------------
+# Logistic Regression Model -----------------------------------------------
 
 # Let's start by fitting a Logistic Regression Model with all the variables:
+train <- cbind(credit.x, default = credit.y)
+str(train)
 
-( logReg <- glm (default.payment.next.month ~ ., data = train, family = binomial(link=logit)) )
+( logReg <- glm(default ~ ., data = train, family = binomial(link=logit)) )
 summary(logReg)
 
 # Then we try to simplify the model by eliminating the least important variables progressively 
@@ -158,7 +155,7 @@ summary(logReg.step)
 
 # And then refit the model with the optimized model
 
-logReg <- glm (logReg.step$formula, data = train, family = binomial(link = logit))
+# logReg <- glm (logReg.step$formula, data = train, family = binomial(link = logit))
 summary(logReg)
 
 # We observe that the weights assigned to the different variables have different orders of magnitude, 
@@ -186,16 +183,16 @@ predictions[pred < p] <- 0
 
 # We can compute now the confusion matrix
 
-(tab <- with(credit, table(Truth=default.payment.next.month[train.idx],Pred=predictions)))
-(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # ~17 % of training error
+(tab <- with(credit, table(Truth=train$default,Pred=predictions)))
+(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # ~29 % of training error
 
 # Test error
-
+test <- credit[credit.test,-24]
 # We execute the same process but now using the test data.
 
 pred <- predict (
   object = logReg,
-  newdata = test,
+  newdata = credit[,],
   type = 'response'
 )
 
@@ -243,7 +240,6 @@ plot(g)
 # of logarithms could help improve our prediction.
 
 
-# Logistic Regression Model v2 ---------------------------------
 
 
 # Support Vector Machine with Radial Basis Function Kernel ------------------------------------------
@@ -291,15 +287,72 @@ train(
 
 
 # Neural Networks ------------------------------------------
-
 library(nnet)
+library(devtools)
+# Function to plot the neural networks
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
 
-model.nnet <- nnet( ~.,
-                   data = Admis, 
-                   subset=learn, 
-                   size=20,
-                   maxit=200)
-## Let's start by standardizing the inputs; this is important to avoid network stagnation (premature convergence)
+# Train: (credit.x, credit.y)
+# Test: credit[credit.test,-24]
+
+train <- cbind(credit.x, default = credit.y)
+test <- credit[credit.test,]
+
+model.nnet <- nnet( default ~ . ,
+                   data = train,
+                   size=11,
+                   maxit=500)
+
+## Take your time to understand the output
+model.nnet 
+# Plot the neural network
+plot.nnet(model.nnet)
+# Fitting criterion (aka error function)
+model.nnet$value
+# Fitted values for the training data
+model.nnet$fitted.values
+# Residuals
+model.nnet$residuals
+# Weights
+model.nnet$wts
+
+# As you can see, some weights are large (two orders of magnitude larger then others)
+# This is no good, since it makes the model unstable (ie, small changes in some inputs may
+# entail significant changes in the network, because of the large weights)
+# One way to avoid this is by regularizing (decay parameter).
+
+model.nnet <- nnet( default ~ . ,
+                    data = train,
+                    size=11,
+                    maxit=500,
+                    decay = 0.01)
+
+summary(model.nnet) # Now the weights are more similar.
+
+# Training error. Accuracy: 0.7153
+pred.train <- as.factor(predict (model.nnet, type="class"))
+confusionMatrix(pred.train, train[,24])
+
+# Test error. Accuracy: 0.6987
+pred.test <- as.factor(predict(model.nnet, newdata = test[,-24], type = 'class'))
+confusionMatrix(pred.test, test[,24])
+
+# Adjustment of the parameters
+
+## WARNING: this may take an hour
+(decays <- 10^seq(-3,0,by=0.2))
+trc <- trainControl (method="repeatedcv", number=10, repeats=1)
+
+start.time <- proc.time()
+model.10x10CV <- train ( default ~., 
+                        data = train,
+                        method='nnet', 
+                        maxit = 300, 
+                        trace = FALSE,
+                        tuneGrid = expand.grid(.size=11,.decay=decays), 
+                        trControl=trc)
+end.time <- proc.time()
+time.nn <- end.time - start.time
 
 
 
@@ -317,21 +370,6 @@ model.nnet <- nnet( ~.,
 
 ## doing both (explore different numbers of hidden units AND regularization values)
 # is usually a waste of computing resources (but notice that train() would admit it)
-
-nnet_model <- train (admit ~.,
-                        data = train,
-                        method='nnet', 
-                        maxit = 500, 
-                        trace = FALSE,
-                        tuneGrid = expand.grid(.size=sizes,.decay=0)
-                     )
-
-
-
-################ Neural Network plotting function by fadwa123 ##################
-library(devtools)
-source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
-################################################################################
 
 
 
