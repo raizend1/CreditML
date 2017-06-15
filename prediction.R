@@ -303,7 +303,7 @@ model.nnet <- nnet( default ~ . ,
                    size=11,
                    maxit=500)
 
-## Take your time to understand the output
+# Output
 model.nnet 
 # Plot the neural network
 plot.nnet(model.nnet)
@@ -339,40 +339,149 @@ confusionMatrix(pred.test, test[,24])
 
 # Adjustment of the parameters
 
-## WARNING: this may take an hour
+# For a specific model, in our case the neural network, the function train() in {caret} 
+# uses a "grid" of model parameters and trains using a given resampling method (in our case we 
+# will be using 10x10 CV). All combinations are evaluated, and the best one (according to 10x10 CV) 
+# is chosen and used to construct a final model, which is refit using the whole training set
+
 (decays <- 10^seq(-3,0,by=0.2))
-trc <- trainControl (method="repeatedcv", number=10, repeats=1)
+trc <- trainControl (method="repeatedcv", number=5, repeats=5)
 
 start.time <- proc.time()
+
+## WARNING: This may take a long time
 model.10x10CV <- train ( default ~., 
                         data = train,
                         method='nnet', 
                         maxit = 300, 
                         trace = FALSE,
-                        tuneGrid = expand.grid(.size=11,.decay=decays), 
+                        tuneGrid = expand.grid(.size=7,.decay=decays), 
                         trControl=trc)
 end.time <- proc.time()
 time.nn <- end.time - start.time
+# user   system  elapsed 
+# 4675.337   33.098 4785.508 
 
+model.10x10CV
+# Neural Network 
+# 
+# 10092 samples
+# 23 predictor
+# 2 classes: 'Not default', 'Default' 
+# 
+# No pre-processing
+# Resampling: Cross-Validated (5 fold, repeated 5 times) 
+# Summary of sample sizes: 8073, 8073, 8074, 8074, 8074, 8074, ... 
+# Resampling results across tuning parameters:
+#   
+#   decay        Accuracy   Kappa    
+# 0.001000000  0.6970280  0.3967852
+# 0.001584893  0.7016054  0.4054600
+# 0.002511886  0.6955215  0.3930530
+# 0.003981072  0.6974836  0.3970819
+# 0.006309573  0.6977605  0.3978085
+# 0.010000000  0.6962740  0.3945761
+# 0.015848932  0.6997227  0.4012369
+# 0.025118864  0.6970670  0.3960558
+# 0.039810717  0.6988316  0.3995823
+# 0.063095734  0.6966707  0.3952758
+# 0.100000000  0.6955609  0.3927661
+# 0.158489319  0.6954024  0.3925968
+# 0.251188643  0.6968691  0.3955571
+# 0.398107171  0.6978602  0.3976356
+# 0.630957344  0.6994651  0.4007636
+# 1.000000000  0.6989700  0.3999047
+# 
+# Tuning parameter 'size' was held constant at a value of 7
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were size = 7 and decay = 0.001584893.
 
+# Training error
+pred.train <- predict (model.10x10CV, type="prob")
 
-## For a specific model, in our case the neural network, the function train() in {caret} 
-# uses a "grid" of model parameters and trains using a given resampling method (in our case we 
-# will be using 10x10 CV). All combinations are evaluated, and the best one (according to 10x10 CV) 
-# is chosen and used to construct a final model, which is refit using the whole training set
+# Transforming the probabilities into classes
+predictions.train <- factor()
+levels(predictions.train) <- c('Default', 'Not default')
+for (i in 1:nrow(pred.train)){
+  if(pred.train[i,1] >= 0.5){
+    predictions.train[i] <- 'Not default' 
+  }else{
+    predictions.train[i] <- 'Default'
+  }
+}
+confusionMatrix(predictions.train, train[,24])
 
-## Thus train() returns the constructed model (exactly as a direct call to nnet() would)
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        3797    1727
+# Default            1069    3499
+# 
+# Accuracy : 0.7229          
+# 95% CI : (0.7141, 0.7317)
+# No Information Rate : 0.5178          
+# P-Value [Acc > NIR] : < 2.2e-16       
+# 
+# Kappa : 0.4478          
+# Mcnemar's Test P-Value : < 2.2e-16       
+# 
+# Sensitivity : 0.7803          
+# Specificity : 0.6695          
+# Pos Pred Value : 0.6874          
+# Neg Pred Value : 0.7660          
+# Prevalence : 0.4822          
+# Detection Rate : 0.3762          
+# Detection Prevalence : 0.5474          
+# Balanced Accuracy : 0.7249          
+# 
+# 'Positive' Class : Not default 
 
-## In order to find the best network architecture, we are going to explore two methods:
+# Test error.
+pred.test <- predict(model.10x10CV, newdata = test[,-24], type = 'prob')
 
-## a) Explore different numbers of hidden units in one hidden layer, with no regularization
-## b) Fix a large number of hidden units in one hidden layer, and explore different regularization values (recommended)
+# Transforming the probabilities into classes
+predictions.test <- factor()
+levels(predictions.test) <- c('Default', 'Not default')
+for (i in 1:nrow(pred.test)){
+  if(pred.train[i,1] >= 0.5){
+    predictions.test[i] <- 'Not default' 
+  }else{
+    predictions.test[i] <- 'Default'
+  }
+}
 
-## doing both (explore different numbers of hidden units AND regularization values)
-# is usually a waste of computing resources (but notice that train() would admit it)
+pred.test
 
+confusionMatrix(predictions.test, test[,24])
 
+# Cesc: I think I have overfitted the model
 
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default         636     726
+# Default             579     581
+# 
+# Accuracy : 0.4826          
+# 95% CI : (0.4629, 0.5023)
+# No Information Rate : 0.5182          
+# P-Value [Acc > NIR] : 0.9998          
+# 
+# Kappa : -0.0319         
+# Mcnemar's Test P-Value : 5.31e-05        
+# 
+# Sensitivity : 0.5235          
+# Specificity : 0.4445          
+# Pos Pred Value : 0.4670          
+# Neg Pred Value : 0.5009          
+# Prevalence : 0.4818          
+# Detection Rate : 0.2522          
+# Detection Prevalence : 0.5400          
+# Balanced Accuracy : 0.4840          
+# 
+# 'Positive' Class : Not default  
 
 
 # Random Forests ----------------------------------------------------------
