@@ -33,6 +33,7 @@ library(gridExtra)
 # Read initial data
 load('Environment_EDA.RData')
 
+
 # Introduction to the prediction section ----------------------------------
 
 # In this project, we want to predict a binary variable. 'Default.payment.next.month' has two different levels: 
@@ -59,9 +60,15 @@ table(credit$default.payment.next.month)
 # The classifier that always predicts the majority class ('Not default') would give us a 22.12% of error.
 # This is our threshold. Any model with a higher error than this can be automatically discarded.
 
+<<<<<<< HEAD
 # 80% Train - 20% Test
 
 # Then we check if the test and train samples are balanced
+=======
+# Train and test splitting ------------------------------------------------
+
+# We first check if the test and train samples are balanced
+>>>>>>> 9433399a530bdef656315dd89ce8d087f95b92a5
 rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(credit$default.payment.next.month))*100, function(u) noquote(sprintf('%.2f%%',u))))
 # Not default Default 
 # [1,] "23167"     "6533"  
@@ -87,14 +94,16 @@ credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
 
 
-#*****************************************************************************************#
-#                                        SVM Definition                                   #
-#*****************************************************************************************#
+
+# Support Vector Machine --------------------------------------------------
+
 require(kernlab)
 require(caret)
 
 credit.x <- credit[credit.train,-24]
 credit.y <- credit[credit.train,24]
+
+
 
 # We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
 # To have more information on how well this method works with this configuration, we want to be able to have a 
@@ -159,6 +168,7 @@ end.time<-proc.time()
 time.svm2<- end.time-start.time
 stopCluster(cl)
 
+<<<<<<< HEAD
 # SVM Second round results
 time.svm2
 # user   system  elapsed 
@@ -248,10 +258,15 @@ confusionMatrix(pred.test.svm, credit[-train,]$default.payment.next.month)
 
 
 # Initial Logistic Regression Model -----------------------------------------------
+=======
+# Logistic Regression Model -----------------------------------------------
+>>>>>>> 9433399a530bdef656315dd89ce8d087f95b92a5
 
 # Let's start by fitting a Logistic Regression Model with all the variables:
+train <- cbind(credit.x, default = credit.y)
+str(train)
 
-( logReg <- glm (default.payment.next.month ~ ., data = train, family = binomial(link=logit)) )
+( logReg <- glm(default ~ ., data = train, family = binomial(link=logit)) )
 summary(logReg)
 
 # Then we try to simplify the model by eliminating the least important variables progressively 
@@ -262,7 +277,7 @@ summary(logReg.step)
 
 # And then refit the model with the optimized model
 
-logReg <- glm (logReg.step$formula, data = train, family = binomial(link = logit))
+# logReg <- glm (logReg.step$formula, data = train, family = binomial(link = logit))
 summary(logReg)
 
 # We observe that the weights assigned to the different variables have different orders of magnitude, 
@@ -290,16 +305,16 @@ predictions[pred < p] <- 0
 
 # We can compute now the confusion matrix
 
-(tab <- with(credit, table(Truth=default.payment.next.month[train.idx],Pred=predictions)))
-(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # ~17 % of training error
+(tab <- with(credit, table(Truth=train$default,Pred=predictions)))
+(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # ~29 % of training error
 
 # Test error
-
+test <- credit[credit.test,-24]
 # We execute the same process but now using the test data.
 
 pred <- predict (
   object = logReg,
-  newdata = test,
+  newdata = credit[,],
   type = 'response'
 )
 
@@ -347,7 +362,6 @@ plot(g)
 # of logarithms could help improve our prediction.
 
 
-# Logistic Regression Model v2 ---------------------------------
 
 
 # Support Vector Machine with Radial Basis Function Kernel ------------------------------------------
@@ -395,50 +409,201 @@ train(
 
 
 # Neural Networks ------------------------------------------
-
 library(nnet)
+library(devtools)
+# Function to plot the neural networks
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
 
-model.nnet <- nnet( ~.,
-                   data = Admis, 
-                   subset=learn, 
-                   size=20,
-                   maxit=200)
-## Let's start by standardizing the inputs; this is important to avoid network stagnation (premature convergence)
+# Train: (credit.x, credit.y)
+# Test: credit[credit.test,-24]
 
+train <- cbind(credit.x, default = credit.y)
+test <- credit[credit.test,]
 
+model.nnet <- nnet( default ~ . ,
+                   data = train,
+                   size=11,
+                   maxit=500)
 
-## For a specific model, in our case the neural network, the function train() in {caret} 
+# Output
+model.nnet 
+# Plot the neural network
+plot.nnet(model.nnet)
+# Fitting criterion (aka error function)
+model.nnet$value
+# Fitted values for the training data
+model.nnet$fitted.values
+# Residuals
+model.nnet$residuals
+# Weights
+model.nnet$wts
+
+# As you can see, some weights are large (two orders of magnitude larger then others)
+# This is no good, since it makes the model unstable (ie, small changes in some inputs may
+# entail significant changes in the network, because of the large weights)
+# One way to avoid this is by regularizing (decay parameter).
+
+model.nnet <- nnet( default ~ . ,
+                    data = train,
+                    size=11,
+                    maxit=500,
+                    decay = 0.01)
+
+summary(model.nnet) # Now the weights are more similar.
+
+# Training error. Accuracy: 0.7153
+pred.train <- as.factor(predict (model.nnet, type="class"))
+confusionMatrix(pred.train, train[,24])
+
+# Test error. Accuracy: 0.6987
+pred.test <- as.factor(predict(model.nnet, newdata = test[,-24], type = 'class'))
+confusionMatrix(pred.test, test[,24])
+
+# Adjustment of the parameters
+
+# For a specific model, in our case the neural network, the function train() in {caret} 
 # uses a "grid" of model parameters and trains using a given resampling method (in our case we 
 # will be using 10x10 CV). All combinations are evaluated, and the best one (according to 10x10 CV) 
 # is chosen and used to construct a final model, which is refit using the whole training set
 
-## Thus train() returns the constructed model (exactly as a direct call to nnet() would)
+(decays <- 10^seq(-3,0,by=0.2))
+trc <- trainControl (method="repeatedcv", number=5, repeats=5)
 
-## In order to find the best network architecture, we are going to explore two methods:
+start.time <- proc.time()
 
-## a) Explore different numbers of hidden units in one hidden layer, with no regularization
-## b) Fix a large number of hidden units in one hidden layer, and explore different regularization values (recommended)
-
-## doing both (explore different numbers of hidden units AND regularization values)
-# is usually a waste of computing resources (but notice that train() would admit it)
-
-nnet_model <- train (admit ~.,
+## WARNING: This may take a long time
+model.10x10CV <- train ( default ~., 
                         data = train,
                         method='nnet', 
-                        maxit = 500, 
+                        maxit = 300, 
                         trace = FALSE,
-                        tuneGrid = expand.grid(.size=sizes,.decay=0)
-                     )
+                        tuneGrid = expand.grid(.size=7,.decay=decays), 
+                        trControl=trc)
+end.time <- proc.time()
+time.nn <- end.time - start.time
+# user   system  elapsed 
+# 4675.337   33.098 4785.508 
 
+model.10x10CV
+# Neural Network 
+# 
+# 10092 samples
+# 23 predictor
+# 2 classes: 'Not default', 'Default' 
+# 
+# No pre-processing
+# Resampling: Cross-Validated (5 fold, repeated 5 times) 
+# Summary of sample sizes: 8073, 8073, 8074, 8074, 8074, 8074, ... 
+# Resampling results across tuning parameters:
+#   
+#   decay        Accuracy   Kappa    
+# 0.001000000  0.6970280  0.3967852
+# 0.001584893  0.7016054  0.4054600
+# 0.002511886  0.6955215  0.3930530
+# 0.003981072  0.6974836  0.3970819
+# 0.006309573  0.6977605  0.3978085
+# 0.010000000  0.6962740  0.3945761
+# 0.015848932  0.6997227  0.4012369
+# 0.025118864  0.6970670  0.3960558
+# 0.039810717  0.6988316  0.3995823
+# 0.063095734  0.6966707  0.3952758
+# 0.100000000  0.6955609  0.3927661
+# 0.158489319  0.6954024  0.3925968
+# 0.251188643  0.6968691  0.3955571
+# 0.398107171  0.6978602  0.3976356
+# 0.630957344  0.6994651  0.4007636
+# 1.000000000  0.6989700  0.3999047
+# 
+# Tuning parameter 'size' was held constant at a value of 7
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were size = 7 and decay = 0.001584893.
 
+# Training error
+pred.train <- predict (model.10x10CV, type="prob")
 
-################ Neural Network plotting function by fadwa123 ##################
-library(devtools)
-source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
-################################################################################
+# Transforming the probabilities into classes
+predictions.train <- factor()
+levels(predictions.train) <- c('Default', 'Not default')
+for (i in 1:nrow(pred.train)){
+  if(pred.train[i,1] >= 0.5){
+    predictions.train[i] <- 'Not default' 
+  }else{
+    predictions.train[i] <- 'Default'
+  }
+}
+confusionMatrix(predictions.train, train[,24])
 
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        3797    1727
+# Default            1069    3499
+# 
+# Accuracy : 0.7229          
+# 95% CI : (0.7141, 0.7317)
+# No Information Rate : 0.5178          
+# P-Value [Acc > NIR] : < 2.2e-16       
+# 
+# Kappa : 0.4478          
+# Mcnemar's Test P-Value : < 2.2e-16       
+# 
+# Sensitivity : 0.7803          
+# Specificity : 0.6695          
+# Pos Pred Value : 0.6874          
+# Neg Pred Value : 0.7660          
+# Prevalence : 0.4822          
+# Detection Rate : 0.3762          
+# Detection Prevalence : 0.5474          
+# Balanced Accuracy : 0.7249          
+# 
+# 'Positive' Class : Not default 
 
+# Test error.
+pred.test <- predict(model.10x10CV, newdata = test[,-24], type = 'prob')
 
+# Transforming the probabilities into classes
+predictions.test <- factor()
+levels(predictions.test) <- c('Default', 'Not default')
+for (i in 1:nrow(pred.test)){
+  if(pred.train[i,1] >= 0.5){
+    predictions.test[i] <- 'Not default' 
+  }else{
+    predictions.test[i] <- 'Default'
+  }
+}
+
+pred.test
+
+confusionMatrix(predictions.test, test[,24])
+
+# Cesc: I think I have overfitted the model
+
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default         636     726
+# Default             579     581
+# 
+# Accuracy : 0.4826          
+# 95% CI : (0.4629, 0.5023)
+# No Information Rate : 0.5182          
+# P-Value [Acc > NIR] : 0.9998          
+# 
+# Kappa : -0.0319         
+# Mcnemar's Test P-Value : 5.31e-05        
+# 
+# Sensitivity : 0.5235          
+# Specificity : 0.4445          
+# Pos Pred Value : 0.4670          
+# Neg Pred Value : 0.5009          
+# Prevalence : 0.4818          
+# Detection Rate : 0.2522          
+# Detection Prevalence : 0.5400          
+# Balanced Accuracy : 0.4840          
+# 
+# 'Positive' Class : Not default  
 
 
 # Random Forests ----------------------------------------------------------
