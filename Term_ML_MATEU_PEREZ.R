@@ -95,14 +95,14 @@ summary(credit)
 # they have very few unique values relative to the number of samples and the ratio of the frequency of the 
 # most common value to the frequency of the second most common value is large.  
 
-# library("caret")
-# cl <- makeCluster(detectCores())
-# registerDoParallel(cl)
-# zero.variance <- nearZeroVar(credit, saveMetrics = TRUE)
-# stopCluster(cl)
-# str(zero.variance)
-# zero.variance[zero.variance[,"zeroVar"] > 0, ] 
-# zero.variance[zero.variance[,"zeroVar"] + zero.variance[,"nzv"] > 0, ] 
+library("caret")
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+zero.variance <- nearZeroVar(credit, saveMetrics = TRUE)
+stopCluster(cl)
+str(zero.variance)
+zero.variance[zero.variance[,"zeroVar"] > 0, ] 
+zero.variance[zero.variance[,"zeroVar"] + zero.variance[,"nzv"] > 0, ] 
 
 #There are none, we can conclude that all the predictors are relevant for the moment.
 
@@ -162,6 +162,9 @@ credit<-credit[-num.zeros.index,]
 # update continuous and factor data
 credit.continuos<-credit[,-factor.indexes]
 credit.factors<-credit[,factor.indexes]
+
+# So in total there are 300 of this kind of data, it represents 1% of the data, 
+# but we will discard them anyway because this data can produce wrong calculations.
 
 ################# Analysis of the continuous variables ###################
 
@@ -262,21 +265,21 @@ credit.continuos <- credit[,-factor.indexes]
 #**************************** Outlier detection with lofactor (Local Outlier Factor) ***********************************
 # Outlier detection with lofactor (Local Outlier Factor)
 
-require(DMwR)
-outlier.scores <- lofactor(credit.continuos[,-2], k=10) # Warning: This takes a while!
+#require(DMwR)
+#outlier.scores <- lofactor(credit.continuos[,-2], k=10) # Warning: This takes a while!
 
 # We cannot plot, there are NaN, infinite values, possible cause is to have more repeated values than neighbours k
-plot(density(outlier.scores))
+#plot(density(outlier.scores))
 
 # Pick top 5 as outliers
-(outliers <- order(outlier.scores, decreasing=T)[1:5])
-hist(outliers)
+#(outliers <- order(outlier.scores, decreasing=T)[1:5])
+#hist(outliers)
 
 # Which are the outliers?
-print(outliers)
+#print(outliers)
 
 # We create a table of scores and id, to check the "oulier" values
-scores <- cbind.data.frame(score = outlier.scores,id = rownames(credit.continuos))
+#scores <- cbind.data.frame(score = outlier.scores,id = rownames(credit.continuos))
 
 # Credit <- credit[-as.numeric(scores[scores$score >= scores[outliers[5],]$score,]$id)]
 
