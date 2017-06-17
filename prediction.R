@@ -78,17 +78,20 @@ table(credit[subsample.index,]$default.payment.next.month)
 credit.train <- sample(subsample.index, size = ceiling(length(subsample.index)*0.8))
 credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 
+credit.x <- credit[credit.train,-24]
+credit.y <- credit[credit.train,24]
+
+# Final train dataset size
+dim(credit.x)
+# [1] 10092    23
+length(credit.y)
+# [1] 10092
 
 
 # Support Vector Machine --------------------------------------------------
 
 require(kernlab)
 require(caret)
-
-credit.x <- credit[credit.train,-24]
-credit.y <- credit[credit.train,24]
-
-
 
 # We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
 # To have more information on how well this method works with this configuration, we want to be able to have a 
@@ -142,6 +145,11 @@ nnet.tune<-train(credit.x[credit.train,], credit.y[credit.train],
 
 # Let's start by fitting a Logistic Regression Model with all the variables:
 train <- cbind(credit.x, default = credit.y)
+pay <- c(7,8,9,10,11) 
+# We have not considered all the categorical PAY_* variables unless PAY_0. They have 7 modalities each
+# and they introduce a lot of inestability at the model. 
+train <- train[,-pay]
+
 str(train)
 
 ( logReg <- glm(default ~ ., data = train, family = binomial(link=logit)) )
@@ -151,7 +159,7 @@ summary(logReg)
 # using the step() algorithm which penalizes models based on the AIC value.
 
 # logReg.step <- step(logReg) # Warning: It takes a while
-summary(logReg.step)
+# summary(logReg.step)
 
 # And then refit the model with the optimized model
 
@@ -170,7 +178,6 @@ summary(logReg)
 
 pred <- predict (
   object = logReg,
-  newdata = train,
   type = 'response'
                 )
 # We set a probability threshold 'p' from which we will classify an observation to 'Default' 
@@ -184,17 +191,22 @@ predictions[pred < p] <- 0
 # We can compute now the confusion matrix
 
 (tab <- with(credit, table(Truth=train$default,Pred=predictions)))
-(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # ~29 % of training error
+(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # 29.39952 % of training error
 
 # Test error
+test_aux <- credit[credit.test,]
 test <- credit[credit.test,-24]
+test <- test[,-pay]
+
 # We execute the same process but now using the test data.
 
 pred <- predict (
   object = logReg,
-  newdata = credit[,],
-  type = 'response'
+  newdata = test,
+  type = 'response',
+  na.action = na.pass
 )
+
 
 # We set a probability threshold 'p' from which we will classify an observation to 'Default' 
 # or 'Not Default'.
@@ -206,12 +218,11 @@ predictions[pred < p] <- 0
 
 # We can compute now the confusion matrix for the test data.
 
-(tab <- with(test, table(Truth=default.payment.next.month,Pred=predictions)))
-(error.test <- 100*(1-sum(diag(tab))/nrow(test))) # ~ 17 % of error as well.
+( tab <- table(Truth = test_aux$default.payment.next.month, Pred=predictions) )
+(error.test <- 100*(1-sum(diag(tab))/nrow(test))) # 29.54 % of error as well.
 
 # Training error is very similar to test error, which means that we are probably 
-# not overfitting the dataset with the model. It is lower from the threshold that we initially
-# marked, 22%.
+# not overfitting the dataset with the model.
 
 # Load some libraries to evaluate the binary classifier
 
@@ -223,72 +234,29 @@ library(e1071)
 # the precision and the accuracy of the model. 
 
 levels <- c('Not default', 'Default')
-truth <- test$default.payment.next.month
+truth <- test_aux$default.payment.next.month
 predictions <- as.factor(predictions)
 levels(predictions) <- c('Not default', 'Default')
 
 confusionMatrix(table(truth, predictions))
 
 # Plot the ROC curve
-credit$prob <- pred
-g <- roc(default.payment.next.month ~ prob, data = credit)
+test_aux$prob <- pred
+g <- roc(default.payment.next.month ~ prob, data = test_aux)
 plot(g)
+auc(g)
 
-# Not very good results...
+# Area under the curve: 0.7771
 
 # We saw during the EDA that some of the variables had very skewed distributions. The application
 # of logarithms could help improve our prediction.
 
 
-
-
-# Support Vector Machine with Radial Basis Function Kernel ------------------------------------------
-
-# We will use the very powerful 'train' function to train a SVM with a Radial Basis Function acting
-# as a Kernel function. First we will adapt our data to the arguments of the function.
-
-library(kernlab)
-library(caret)
-library(tidyverse)
-
-svmModelInfo <- getModelInfo(model = "svmRadial", regex = FALSE)[[1]]
-names(svmModelInfo)
-
-# As a first training of the SVM model, we won't take into account the variables PAY_*. The variables
-# BILL_ATM* and PAY_ATM* have been gathered all together into a single variable, BILL_ATM_TOTAL and
-# PAY_ATM_TOTAL, as we have demonstrated through the corelation matrix and the PCA that they are very
-# related. To gather them we have just applied an 'average' function for each individual.
-
-# Matrix of predictors with the new defined variables
-
-train$BILL_ATM_TOTAL <- with(train, (BILL_AMT1 + BILL_AMT2 + BILL_AMT3 + BILL_AMT4 + BILL_AMT5 + BILL_AMT6) / 6)
-train$PAY_ATM_TOTAL <- with(train, (PAY_AMT1 + PAY_AMT2 + PAY_AMT3 + PAY_AMT4 + PAY_AMT5 + PAY_AMT6) / 6)
-
-
-predictors_SVM <- train[c(1,5,25,26)]
-target_SVM <- train[,24]
-
-summary(predictors_SVM)
-# train %>% mutate(
-#   BILL_ATM_TOTAL = (BILL_AMT1 + BILL_AMT2 + BILL_AMT3 + BILL_AMT4 + BILL_AMT5 + BILL_AMT6) / 6 ,
-#   PAY_ATM_TOTAL = (PAY_AMT1 + PAY_AMT2 + PAY_AMT3 + PAY_AMT4 + PAY_AMT5 + PAY_AMT6) / 6
-# ) %>% 
-# select(LIMIT_BAL, AGE, BILL_ATM_TOTAL, PAY_ATM_TOTAL)
-
-
-# Training of the SVM with basis radial function
-train(
-  x = predictors_SVM,
-  y = target_SVM,
-  method = 'svmRadial',
-  metric = 'Accuracy',
-  maximize = TRUE
-)
-
-
 # Neural Networks ------------------------------------------
+
 library(nnet)
 library(devtools)
+
 # Function to plot the neural networks
 source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
 
@@ -298,9 +266,17 @@ source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a5
 train <- cbind(credit.x, default = credit.y)
 test <- credit[credit.test,]
 
+dim(train)
+# [1] 10092    24
+dim(test)
+# [1] 2522   24
+
+
+# Training the neural network. One output layer, one hidden layer with 20 neurons.
 model.nnet <- nnet( default ~ . ,
                    data = train,
-                   size=11,
+                   size=20,
+                   MaxNWts = 2000,
                    maxit=500)
 
 # Output
@@ -316,19 +292,6 @@ model.nnet$residuals
 # Weights
 model.nnet$wts
 
-# As you can see, some weights are large (two orders of magnitude larger then others)
-# This is no good, since it makes the model unstable (ie, small changes in some inputs may
-# entail significant changes in the network, because of the large weights)
-# One way to avoid this is by regularizing (decay parameter).
-
-model.nnet <- nnet( default ~ . ,
-                    data = train,
-                    size=11,
-                    maxit=500,
-                    decay = 0.01)
-
-summary(model.nnet) # Now the weights are more similar.
-
 # Training error. Accuracy: 0.7153
 pred.train <- as.factor(predict (model.nnet, type="class"))
 confusionMatrix(pred.train, train[,24])
@@ -336,6 +299,42 @@ confusionMatrix(pred.train, train[,24])
 # Test error. Accuracy: 0.6987
 pred.test <- as.factor(predict(model.nnet, newdata = test[,-24], type = 'class'))
 confusionMatrix(pred.test, test[,24])
+
+# As you can see, some weights are large (two orders of magnitude larger then others)
+# This is no good, since it makes the model unstable (ie, small changes in some inputs may
+# entail significant changes in the network, because of the large weights)
+# One way to avoid this is by regularizing (decay parameter).
+
+model.nnet <- nnet( default ~ . ,
+                    data = train,
+                    size=20,
+                    MaxNWts = 2000,
+                    maxit=500,
+                    decay = 0.5)
+
+summary(model.nnet) # Now the weights are more similar, and some of them have been converted to 0.
+
+# Training error. Accuracy: 0.7644
+pred.train <- as.factor(predict (model.nnet, type="class"))
+confusionMatrix(pred.train, train[,24])
+
+# Test error. Accuracy: 0.6959
+pred.test <- as.factor(predict(model.nnet, newdata = test[,-24], type = 'class'))
+confusionMatrix(pred.test, test[,24])
+
+pred.test.raw <- predict(model.nnet, newdata = test[,-24], type = 'raw')
+
+pred.test[1:10]
+pred.test.raw[1:10]
+
+names(test)
+
+# Plot the ROC curve
+test$prob <- pred.test.raw
+g <- roc(default.payment.next.month ~ prob, data = test)
+plot(g)
+auc(g)
+# Area under the curve: 0.7615
 
 # Adjustment of the parameters
 
@@ -482,6 +481,12 @@ confusionMatrix(predictions.test, test[,24])
 # Balanced Accuracy : 0.4840          
 # 
 # 'Positive' Class : Not default  
+
+
+# Plot the ROC curve
+test_aux$prob <- pred.test
+g <- roc(default.payment.next.month ~ prob, data = test_aux)
+plot(g)
 
 
 # Random Forests ----------------------------------------------------------
