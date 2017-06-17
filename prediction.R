@@ -59,7 +59,6 @@ table(credit$default.payment.next.month)
 # 23167        6533 
 6533 / (23167 + 6533) # 0.2199663
 # The classifier that always predicts the majority class ('Not default') would give us a 22.12% of error.
-# This is our threshold. Any model with a higher error than this can be automatically discarded.
 
 # 80% Train - 20% Test
 
@@ -87,7 +86,15 @@ table(credit[subsample.index,]$default.payment.next.month)
 credit.train <- sample(subsample.index, size = ceiling(length(subsample.index)*0.8))
 credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 
-<<<<<<< HEAD
+#not balanced
+train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
+
+# Support Vector Machine --------------------------------------------------
+
+require(kernlab)
+require(caret)
+
+
 credit.x <- credit[credit.train,-24]
 credit.y <- credit[credit.train,24]
 
@@ -97,22 +104,6 @@ dim(credit.x)
 length(credit.y)
 # [1] 10092
 
-=======
-#not balanced
-train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
->>>>>>> 9b30f34a6f1d1a7f70807762f7c4ddc7c9dd55fe
-
-# Support Vector Machine --------------------------------------------------
-
-require(kernlab)
-require(caret)
-
-<<<<<<< HEAD
-=======
-credit.x <- credit[credit.train,-24]
-credit.y <- credit[credit.train,24]
-
->>>>>>> 9b30f34a6f1d1a7f70807762f7c4ddc7c9dd55fe
 # We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
 # To have more information on how well this method works with this configuration, we want to be able to have a 
 # look at the folds, and for each of them how close the predicted values were to the actual values, so we set the 
@@ -454,7 +445,7 @@ g <- roc(default.payment.next.month ~ prob, data = test_aux)
 plot(g)
 auc(g)
 
-# Area under the curve: 0.7771
+# Area under the curve: 0.7661
 
 # We saw during the EDA that some of the variables had very skewed distributions. The application
 # of logarithms could help improve our prediction.
