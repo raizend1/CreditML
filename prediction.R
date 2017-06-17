@@ -29,6 +29,7 @@ library(robustbase)
 library(knitcitations)
 library(doParallel)
 library(gridExtra)
+library(DMwR)
 
 # Read initial data
 load('Environment_EDA.RData')
@@ -46,18 +47,25 @@ load('Environment_EDA.RData')
 # 4. Random Forests
 # 5. Neural Networks
 
+
+#*****************************************************************************************#
+#                                        4. Modeling                                      #
+#*****************************************************************************************#
+
 # Before going into the first type of model, we wanted to know which is our upper error threshold.
 # Let's see how much error we would get if we'd always predict the majority class.
 table(credit$default.payment.next.month)
 # Not default     Default 
-# 23364        6636 
-6636 / (23364 + 6636) # 0.2212
+# 23167        6533 
+6533 / (23167 + 6533) # 0.2199663
 # The classifier that always predicts the majority class ('Not default') would give us a 22.12% of error.
 # This is our threshold. Any model with a higher error than this can be automatically discarded.
 
-# Train and test splitting ------------------------------------------------
+# 80% Train - 20% Test
 
-# We first check if the test and train samples are balanced
+# Then we check if the test and train samples are balanced
+
+# Train and test splitting ------------------------------------------------
 rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(credit$default.payment.next.month))*100, function(u) noquote(sprintf('%.2f%%',u))))
 # Not default Default 
 # [1,] "23167"     "6533"  
@@ -69,15 +77,17 @@ rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(
 # the Default ones. Once this is done, we can split this subset into train and test data.
 
 set.seed(555)
-nd.indexes<-sample(which(credit$default.payment.next.month == "Not default"),6081)
+nd.indexes<-sample(which(credit$default.payment.next.month == "Not default"),6533)
 d.indexes<-which(credit$default.payment.next.month == "Default")
 subsample.index<-sort(c(nd.indexes,d.indexes))
 
 table(credit[subsample.index,]$default.payment.next.month)
 
+#balanced
 credit.train <- sample(subsample.index, size = ceiling(length(subsample.index)*0.8))
 credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 
+<<<<<<< HEAD
 credit.x <- credit[credit.train,-24]
 credit.y <- credit[credit.train,24]
 
@@ -87,28 +97,49 @@ dim(credit.x)
 length(credit.y)
 # [1] 10092
 
+=======
+#not balanced
+train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
+>>>>>>> 9b30f34a6f1d1a7f70807762f7c4ddc7c9dd55fe
 
 # Support Vector Machine --------------------------------------------------
 
 require(kernlab)
 require(caret)
 
+<<<<<<< HEAD
+=======
+credit.x <- credit[credit.train,-24]
+credit.y <- credit[credit.train,24]
+
+>>>>>>> 9b30f34a6f1d1a7f70807762f7c4ddc7c9dd55fe
 # We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
 # To have more information on how well this method works with this configuration, we want to be able to have a 
 # look at the folds, and for each of them how close the predicted values were to the actual values, so we set the 
 # savePred parameter as true.
 
-start.time<-proc.time()
+set.seed(555)
 svm.train.control<- trainControl(method = "repeatedcv",number = 10,repeats = 5,savePred=TRUE)
-svm.tune <- train(x=credit.x, y= credit.y, 
+#svm.train.control<- trainControl(method = "repeatedcv",number = 10,repeats = 5,savePred=TRUE,sampling = "smote")
+#this train will take a whille, as cv is computational costly
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+start.time<-proc.time()
+svm.tune <- train(x=credit.x[,-factor.indexes], y= credit.y,
                   method = "svmRadial", trControl = svm.train.control)
 end.time<-proc.time()
 time.svm<- end.time-start.time
+stopCluster(cl)
 
 # SVM First round results
 time.svm
 # user  system elapsed 
 # 1.52    0.09    1.67
+
+# Outliers removed, log modulus used, balanced train and test
+# user  system elapsed 
+# 21.72    1.36 1272.49 #took about 21 minutes
+
 head(svm.tune$pred)
 #      pred         obs      rowIndex      sigma    C    Resample
 # 1 Not default Not default       11    0.09403567 0.25 Fold01.Rep1
@@ -118,30 +149,207 @@ head(svm.tune$pred)
 # 5     Default Not default       87    0.09403567 0.25 Fold01.Rep1
 # 6 Not default     Default       94    0.09403567 0.25 Fold01.Rep1
 svm.tune
-# Tuning parameter 'sigma' was held constant at a value of 0.09403567
-# Accuracy was used to select the optimal model using  the largest value.
-# The final values used for the model were sigma = 0.09403567 and C = 0.25.
+# Resampling results across tuning parameters:
+#   
+#   C     Accuracy   Kappa    
+# 0.25  0.6582040  0.3182430
+# 0.50  0.6572337  0.3166111
+# 1.00  0.6585812  0.3193315
+# 
+# Tuning parameter 'sigma' was held constant at a value
+# of 0.09374442
+# Accuracy was used to select the optimal model using 
+# the largest value.
+# The final values used for the model were sigma =
+#   0.09374442 and C = 1.
 
 # Now we can proceed with the second round by refined the parameter space
 # using the best values of sigma and C
-grid <- expand.grid(sigma = c(0.075,0.08, 0.095, 0.1,0.15),
-                    C = c(0.05, 0.15, 0.25, 0.35, 0.4))
+grid <- expand.grid(sigma = c(0.08, 0.094, 0.1),
+                    C = c(0.7, 0.85, 1, 1.15))
 
+set.seed(555)
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
 start.time<-proc.time()
-svm.tune <- train(x=credit.x[credit.train,], y= credit.y[credit.train], 
+svm.tune.2 <- train(x=credit.x[,-factor.indexes], y= credit.y, 
                   method = "svmRadial", tuneGrid = grid)
 end.time<-proc.time()
-time.svm<- end.time-start.time
+time.svm2<- end.time-start.time
+stopCluster(cl)
+
+# SVM Second round results
+time.svm2
+# user   system  elapsed 
+# 24.70     2.50 15790.23
+
+svm.tune.2
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.075 and C = 0.35.
+
+# Now we do the prediction
+pred.test.svm <- predict(svm.tune.2, newdata=credit[credit.test,])
+
+confusionMatrix(pred.test.svm, credit[credit.test,]$default.payment.next.month)
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default         880     483
+# Default             335     824
+# 
+# Accuracy : 0.6757         
+# 95% CI : (0.657, 0.6939)
+# No Information Rate : 0.5182         
+# P-Value [Acc > NIR] : < 2.2e-16      
+# 
+# Kappa : 0.3532         
+# Mcnemar's Test P-Value : 2.751e-07      
+# 
+# Sensitivity : 0.7243         
+# Specificity : 0.6305         
+# Pos Pred Value : 0.6456         
+# Neg Pred Value : 0.7110         
+# Prevalence : 0.4818         
+# Detection Rate : 0.3489         
+# Detection Prevalence : 0.5404         
+# Balanced Accuracy : 0.6774         
+# 
+# 'Positive' Class : Not default   
 
 
-nnet.tune<-train(credit.x[credit.train,], credit.y[credit.train],
-                 method = "nnet",
-                 preProcess = c("pca"),
-                 trControl= trainControl(method = "cv", number = 10),
-                 tuneGrid = expand.grid(.size=c(1,5,10, 15, 20, 25, 30, 35, 40),.decay=c(0,0.001,0.1, 0.2, 0.3, 0.4, 0.5, 1, 2, 3, 4)))# Check importance of variables
+# Results applyng Smote ---------------------------------------------------
+
+# user   system  elapsed 
+# 293.03    14.15 19384.51 # about 5 hours 20 minutes
+
+# Resampling results across tuning parameters:
+#   
+#   C     Accuracy   Kappa    
+# 0.25  0.7549674  0.3058018
+# 0.50  0.7504051  0.3048879
+# 1.00  0.7438309  0.2948801
+# 
+# Tuning parameter 'sigma' was held constant at a value of 0.1141597
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.1141597 and C = 0.25.
+
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        1063     631
+# Default             233     686
+# 
+# Accuracy : 0.6693          
+# 95% CI : (0.6509, 0.6874)
+# No Information Rate : 0.504           
+# P-Value [Acc > NIR] : < 2.2e-16       
+# 
+# Kappa : 0.3403          
+# Mcnemar's Test P-Value : < 2.2e-16       
+#                                           
+#             Sensitivity : 0.8202          
+#             Specificity : 0.5209          
+#          Pos Pred Value : 0.6275          
+#          Neg Pred Value : 0.7465          
+#              Prevalence : 0.4960          
+#          Detection Rate : 0.4068          
+#    Detection Prevalence : 0.6483          
+#       Balanced Accuracy : 0.6705          
+#                                           
+#        'Positive' Class : Not default   
 
 
-# Logistic Regression Model -----------------------------------------------
+# Results with kernlab after tunning --------------------------------------
+credit.svm <- ksvm(default.payment.next.month ~.,
+                   data=credit[credit.train,], kernel='rbfdot', type = "C-svc",
+                   kpar=list(sigma=0.09374442),C=1)
+
+sparsity <-1 - (credit.svm@nSV / dim(credit)[1])
+# [1] 0.7537037
+
+pred.test.svm <- predict(credit.svm, newdata=credit[credit.test,])
+
+confusionMatrix(pred.test.svm, credit[credit.test,]$default.payment.next.month)
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        1024     517
+# Default             272     800
+# 
+# Accuracy : 0.698         
+# 95% CI : (0.68, 0.7156)
+# No Information Rate : 0.504         
+# P-Value [Acc > NIR] : < 2.2e-16     
+# 
+# Kappa : 0.397         
+# Mcnemar's Test P-Value : < 2.2e-16     
+#                                         
+#             Sensitivity : 0.7901        
+#             Specificity : 0.6074        
+#          Pos Pred Value : 0.6645        
+#          Neg Pred Value : 0.7463        
+#              Prevalence : 0.4960        
+#          Detection Rate : 0.3919        
+#    Detection Prevalence : 0.5897        
+#       Balanced Accuracy : 0.6988        
+#                                         
+#        'Positive' Class : Not default
+
+
+#*****************************************************************************
+# Outliers removed, log modulus used, not balanced train and test
+time.svm
+# user  system elapsed 
+# 139.56    2.53 5855.40  #took about 1 hour 36 minutes
+
+head(svm.tune$pred)
+# pred         obs rowIndex     sigma    C    Resample
+# 1 Not default Not default        1 0.1090202 0.25 Fold01.Rep1
+# 2 Not default     Default        7 0.1090202 0.25 Fold01.Rep1
+# 3 Not default Not default       22 0.1090202 0.25 Fold01.Rep1
+# 4 Not default     Default       40 0.1090202 0.25 Fold01.Rep1
+# 5 Not default Not default       51 0.1090202 0.25 Fold01.Rep1
+# 6 Not default Not default       60 0.1090202 0.25 Fold01.Rep1
+svm.tune
+# Tuning parameter 'sigma' was held constant at a value of 0.1090202
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.1090202 and C = 1.
+
+# Now we do the prediction
+pred.test.svm <- predict(svm.tune, newdata=credit[-train,-factor.indexes])
+
+confusionMatrix(pred.test.svm, credit[-train,]$default.payment.next.month)
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        4464    1126
+# Default             141     209
+# 
+# Accuracy : 0.7867          
+# 95% CI : (0.7761, 0.7971)
+# No Information Rate : 0.7753          
+# P-Value [Acc > NIR] : 0.01751         
+# 
+# Kappa : 0.1706          
+# Mcnemar's Test P-Value : < 2e-16         
+#                                           
+#             Sensitivity : 0.9694          
+#             Specificity : 0.1566          
+#          Pos Pred Value : 0.7986          
+#          Neg Pred Value : 0.5971          
+#              Prevalence : 0.7753          
+#          Detection Rate : 0.7515          
+#    Detection Prevalence : 0.9411          
+#       Balanced Accuracy : 0.5630          
+#                                           
+#        'Positive' Class : Not default 
+
+
+# Initial Logistic Regression Model -----------------------------------------------
 
 # Let's start by fitting a Logistic Regression Model with all the variables:
 train <- cbind(credit.x, default = credit.y)
@@ -490,6 +698,31 @@ plot(g)
 
 
 # Random Forests ----------------------------------------------------------
+library(randomForest)
 
+# First as before, we use the train function to estimate the values for random forest
+rf.train.control<- trainControl(method = "oob",sampling="smote")
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+start.time<-proc.time()
+rf.tune <- train(x=credit.x[,-factor.indexes], y= credit.y,
+                  method = "rf", trControl = rf.train.control)
+end.time<-proc.time()
+time.svm<- end.time-start.time
+stopCluster(cl)
 
+time.svm
+rf.tune
 
+credit.rf <- randomForest(default.payment.next.month ~ ., data=credit[credit.train,], mtry=3, importance=TRUE, 
+                          xtest=credit.x, ytest=credit.y, nodesize=50, maxnodes=14, keep.forest=TRUE)
+summary(credit.rf)
+credit.rf$confusion
+importance(credit.rf)
+print(credit.rf)
+varImpPlot(credit.rf)
+
+pred.test.rf <- predict(credit.rf, credit[credit.test,],type="class")
+
+library(caret)
+confusionMatrix(pred.test.rf, credit[credit.test,]$default.payment.next.month,mode = "prec_recall")
