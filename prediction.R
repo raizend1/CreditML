@@ -42,15 +42,12 @@ load('Environment_EDA.RData')
 # We will try different classification models and see which one adapts better to our problem:
 
 # 1. Logistic Regression
-# 2. Linear/Quadratic Discriminant Analysis (LDA/QDA)
-# 3. Support Vector Machines (SVM)
-# 4. Random Forests
-# 5. Neural Networks
+# 2. Support Vector Machines (SVM)
+# 3. Random Forests
+# 4. Neural Networks
 
 
-#*****************************************************************************************#
-#                                        4. Modeling                                      #
-#*****************************************************************************************#
+# Target variable distribution --------------------------------------------
 
 # Before going into the first type of model, we wanted to know which is our upper error threshold.
 # Let's see how much error we would get if we'd always predict the majority class.
@@ -76,9 +73,10 @@ rbind(noquote(table(credit$default.payment.next.month)),sapply(prop.table(table(
 # the Default ones. Once this is done, we can split this subset into train and test data.
 
 set.seed(555)
-nd.indexes<-sample(which(credit$default.payment.next.month == "Not default"),6533)
-d.indexes<-which(credit$default.payment.next.month == "Default")
-subsample.index<-sort(c(nd.indexes,d.indexes))
+
+nd.indexes <- sample(which(credit$default.payment.next.month == "Not default"),6533)
+d.indexes <- which(credit$default.payment.next.month == "Default")
+subsample.index <- sort(c(nd.indexes,d.indexes))
 
 table(credit[subsample.index,]$default.payment.next.month)
 
@@ -94,15 +92,14 @@ train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
 require(kernlab)
 require(caret)
 
-
 credit.x <- credit[credit.train,-24]
 credit.y <- credit[credit.train,24]
 
 # Final train dataset size
 dim(credit.x)
-# [1] 10092    23
+# [1] 10453    23
 length(credit.y)
-# [1] 10092
+# [1] 10453
 
 # We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
 # To have more information on how well this method works with this configuration, we want to be able to have a 
@@ -357,13 +354,65 @@ summary(logReg)
 # Then we try to simplify the model by eliminating the least important variables progressively 
 # using the step() algorithm which penalizes models based on the AIC value.
 
-# logReg.step <- step(logReg) # Warning: It takes a while
-# summary(logReg.step)
+logReg.step <- step(logReg) # Warning: It takes a minute
+summary(logReg.step)
 
 # And then refit the model with the optimized model
 
-# logReg <- glm (logReg.step$formula, data = train, family = binomial(link = logit))
+logReg <- glm (logReg.step$formula, data = train, family = binomial(link = logit))
 summary(logReg)
+
+# Call:
+#   glm(formula = logReg.step$formula, family = binomial(link = logit), 
+#       data = train)
+# 
+# Deviance Residuals: 
+#   Min       1Q   Median       3Q      Max  
+# -2.6111  -0.9141  -0.3588   0.9857   2.4123  
+# 
+# Coefficients:
+#   Estimate Std. Error z value Pr(>|z|)    
+# (Intercept)       -11.632217 305.754207  -0.038 0.969652    
+# LIMIT_BAL          -0.241973   0.026870  -9.005  < 2e-16 ***
+#   SEXFemale          -0.138609   0.045521  -3.045 0.002327 ** 
+#   EDUCATIONGrad.     12.716498 305.753215   0.042 0.966825    
+# EDUCATIONUniv.     12.763158 305.753216   0.042 0.966703    
+# EDUCATIONH.School  12.678207 305.753220   0.041 0.966925    
+# EDUCATIONUk2       11.649119 305.753565   0.038 0.969608    
+# EDUCATIONUk3       11.624046 305.753369   0.038 0.969674    
+# EDUCATIONUk4       12.586789 305.753715   0.041 0.967163    
+# MARRIAGEMarried     2.067299   0.697197   2.965 0.003025 ** 
+#   MARRIAGESingle      1.869946   0.697606   2.681 0.007351 ** 
+#   MARRIAGEDivorced    2.334919   0.730835   3.195 0.001399 ** 
+#   PAY_0PF             0.304912   0.098190   3.105 0.001901 ** 
+#   PAY_0URC           -0.142802   0.099296  -1.438 0.150392    
+# PAY_0PD1            0.668708   0.107222   6.237 4.47e-10 ***
+#   PAY_0PD2            2.131545   0.121462  17.549  < 2e-16 ***
+#   PAY_0PD3            2.031520   0.270610   7.507 6.04e-14 ***
+#   PAY_0PD4            1.332077   0.459055   2.902 0.003710 ** 
+#   PAY_0PD5            0.295067   0.674604   0.437 0.661826    
+# PAY_0PD6           12.288107 261.075674   0.047 0.962460    
+# PAY_0PD7           12.046611 215.149908   0.056 0.955348    
+# PAY_0PD8           -0.203852   0.799915  -0.255 0.798845    
+# BILL_AMT3           0.058685   0.011758   4.991 6.00e-07 ***
+#   BILL_AMT4           0.038871   0.011737   3.312 0.000927 ***
+#   BILL_AMT6           0.053299   0.010322   5.164 2.42e-07 ***
+#   PAY_AMT1           -0.063208   0.009000  -7.023 2.17e-12 ***
+#   PAY_AMT2           -0.070866   0.010308  -6.874 6.22e-12 ***
+#   PAY_AMT3           -0.055917   0.009895  -5.651 1.60e-08 ***
+#   PAY_AMT4           -0.043887   0.008350  -5.256 1.47e-07 ***
+#   PAY_AMT5           -0.057450   0.010210  -5.627 1.84e-08 ***
+#   PAY_AMT6           -0.012366   0.008017  -1.543 0.122951    
+# ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+# (Dispersion parameter for binomial family taken to be 1)
+# 
+# Null deviance: 14491  on 10452  degrees of freedom
+# Residual deviance: 11866  on 10422  degrees of freedom
+# AIC: 11928
+# 
+# Number of Fisher Scoring iterations: 12
 
 # We observe that the weights assigned to the different variables have different orders of magnitude, 
 # which is something not desirable. As we saw during the EDA, maybe applying logarithms to some of the
@@ -392,6 +441,9 @@ predictions[pred < p] <- 0
 (tab <- with(credit, table(Truth=train$default,Pred=predictions)))
 (error.test <- 100*(1-sum(diag(tab))/nrow(train))) # 29.39952 % of training error
 
+
+confusionMatrix(predictions, )
+
 # Test error
 test_aux <- credit[credit.test,]
 test <- credit[credit.test,-24]
@@ -419,6 +471,36 @@ predictions[pred < p] <- 0
 
 ( tab <- table(Truth = test_aux$default.payment.next.month, Pred=predictions) )
 (error.test <- 100*(1-sum(diag(tab))/nrow(test))) # 29.54 % of error as well.
+
+predictions <- as.factor(predictions)
+levels(predictions) <- c('Not default','Default')
+confusionMatrix(predictions, test_aux$default.payment.next.month)
+
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        1047     513
+# Default             249     804
+# 
+# Accuracy : 0.7084          
+# 95% CI : (0.6905, 0.7258)
+# No Information Rate : 0.504           
+# P-Value [Acc > NIR] : < 2.2e-16       
+# 
+# Kappa : 0.4177          
+# Mcnemar's Test P-Value : < 2.2e-16       
+# 
+# Sensitivity : 0.8079          
+# Specificity : 0.6105          
+# Pos Pred Value : 0.6712          
+# Neg Pred Value : 0.7635          
+# Prevalence : 0.4960          
+# Detection Rate : 0.4007          
+# Detection Prevalence : 0.5970          
+# Balanced Accuracy : 0.7092          
+# 
+# 'Positive' Class : Not default 
 
 # Training error is very similar to test error, which means that we are probably 
 # not overfitting the dataset with the model.
@@ -509,7 +591,7 @@ model.nnet <- nnet( default ~ . ,
                     size=20,
                     MaxNWts = 2000,
                     maxit=500,
-                    decay = 0.5)
+                    decay = 0.5 )
 
 summary(model.nnet) # Now the weights are more similar, and some of them have been converted to 0.
 
@@ -533,7 +615,7 @@ test$prob <- pred.test.raw
 g <- roc(default.payment.next.month ~ prob, data = test)
 plot(g)
 auc(g)
-# Area under the curve: 0.7615
+# Area under the curve: 0.7541
 
 # Adjustment of the parameters
 
@@ -543,7 +625,7 @@ auc(g)
 # is chosen and used to construct a final model, which is refit using the whole training set
 
 (decays <- 10^seq(-3,0,by=0.2))
-trc <- trainControl (method="repeatedcv", number=5, repeats=5)
+trc <- trainControl (method="repeatedcv", number=10, repeats=5)
 
 start.time <- proc.time()
 
@@ -553,46 +635,46 @@ model.10x10CV <- train ( default ~.,
                         method='nnet', 
                         maxit = 300, 
                         trace = FALSE,
-                        tuneGrid = expand.grid(.size=7,.decay=decays), 
+                        tuneGrid = expand.grid(.size=10,.decay=decays), 
                         trControl=trc)
 end.time <- proc.time()
-time.nn <- end.time - start.time
-# user   system  elapsed 
-# 4675.337   33.098 4785.508 
+(time.nn <- end.time - start.time)
+#     user   system  elapsed 
+#   3211.993   24.032 3273.546 
 
 model.10x10CV
-# Neural Network 
-# 
-# 10092 samples
+
+# Neural Network
+# 10453 samples
 # 23 predictor
-# 2 classes: 'Not default', 'Default' 
+# 2 classes: 'Not default', 'Default'
 # 
 # No pre-processing
-# Resampling: Cross-Validated (5 fold, repeated 5 times) 
-# Summary of sample sizes: 8073, 8073, 8074, 8074, 8074, 8074, ... 
+# Resampling: Cross-Validated (10 fold, repeated 5 times)
+# Summary of sample sizes: 9407, 9408, 9408, 9408, 9408, 9408, ...
 # Resampling results across tuning parameters:
-#   
-#   decay        Accuracy   Kappa    
-# 0.001000000  0.6970280  0.3967852
-# 0.001584893  0.7016054  0.4054600
-# 0.002511886  0.6955215  0.3930530
-# 0.003981072  0.6974836  0.3970819
-# 0.006309573  0.6977605  0.3978085
-# 0.010000000  0.6962740  0.3945761
-# 0.015848932  0.6997227  0.4012369
-# 0.025118864  0.6970670  0.3960558
-# 0.039810717  0.6988316  0.3995823
-# 0.063095734  0.6966707  0.3952758
-# 0.100000000  0.6955609  0.3927661
-# 0.158489319  0.6954024  0.3925968
-# 0.251188643  0.6968691  0.3955571
-# 0.398107171  0.6978602  0.3976356
-# 0.630957344  0.6994651  0.4007636
-# 1.000000000  0.6989700  0.3999047
 # 
-# Tuning parameter 'size' was held constant at a value of 7
+#   decay        Accuracy   Kappa
+# 0.001000000  0.7005649  0.4007446
+# 0.001584893  0.7019033  0.4034506
+# 0.002511886  0.6944432  0.3884516
+# 0.003981072  0.7009464  0.4015059
+# 0.006309573  0.7010417  0.4016807
+# 0.010000000  0.7020928  0.4037975
+# 0.015848932  0.7041991  0.4080645
+# 0.025118864  0.6966407  0.3929625
+# 0.039810717  0.7011384  0.4019282
+# 0.063095734  0.6999909  0.3996089
+# 0.100000000  0.7002759  0.4002038
+# 0.158489319  0.6956855  0.3910378
+# 0.251188643  0.6968334  0.3933196
+# 0.398107171  0.6986499  0.3969924
+# 0.630957344  0.7014244  0.4025097
+# 1.000000000  0.7010412  0.4017222
+# 
+# Tuning parameter 'size' was held constant at a value of 10
 # Accuracy was used to select the optimal model using  the largest value.
-# The final values used for the model were size = 7 and decay = 0.001584893.
+# The final values used for the model were size = 10 and decay = 0.01584893.
 
 # Training error
 pred.train <- predict (model.10x10CV, type="prob")
