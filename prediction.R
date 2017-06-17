@@ -58,7 +58,6 @@ table(credit$default.payment.next.month)
 # 23167        6533 
 6533 / (23167 + 6533) # 0.2199663
 # The classifier that always predicts the majority class ('Not default') would give us a 22.12% of error.
-# This is our threshold. Any model with a higher error than this can be automatically discarded.
 
 # 80% Train - 20% Test
 
@@ -89,13 +88,272 @@ credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 #not balanced
 train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
 
+<<<<<<< HEAD
 credit.x <- credit[credit.train,-24]
 credit.y <- credit[credit.train,24]
 
+=======
+# Support Vector Machine --------------------------------------------------
+
+require(kernlab)
+require(caret)
+
+
+credit.x <- credit[credit.train,-24]
+credit.y <- credit[credit.train,24]
+
+# Final train dataset size
+dim(credit.x)
+# [1] 10092    23
+length(credit.y)
+# [1] 10092
+
+# We are using the train function from caret for a Kernel RBF SVM Machine, using a 10 fold cv repeted five times,
+# To have more information on how well this method works with this configuration, we want to be able to have a 
+# look at the folds, and for each of them how close the predicted values were to the actual values, so we set the 
+# savePred parameter as true.
+
+set.seed(555)
+svm.train.control<- trainControl(method = "repeatedcv",number = 10,repeats = 5,savePred=TRUE)
+#svm.train.control<- trainControl(method = "repeatedcv",number = 10,repeats = 5,savePred=TRUE,sampling = "smote")
+#this train will take a whille, as cv is computational costly
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+start.time<-proc.time()
+svm.tune <- train(x=credit.x[,-factor.indexes], y= credit.y,
+                  method = "svmRadial", trControl = svm.train.control)
+end.time<-proc.time()
+time.svm<- end.time-start.time
+stopCluster(cl)
+
+# SVM First round results
+time.svm
+# user  system elapsed 
+# 1.52    0.09    1.67
+
+# Outliers removed, log modulus used, balanced train and test
+# user  system elapsed 
+# 21.72    1.36 1272.49 #took about 21 minutes
+
+head(svm.tune$pred)
+#      pred         obs      rowIndex      sigma    C    Resample
+# 1 Not default Not default       11    0.09403567 0.25 Fold01.Rep1
+# 2 Not default Not default       17    0.09403567 0.25 Fold01.Rep1
+# 3     Default Not default       20    0.09403567 0.25 Fold01.Rep1
+# 4     Default     Default       30    0.09403567 0.25 Fold01.Rep1
+# 5     Default Not default       87    0.09403567 0.25 Fold01.Rep1
+# 6 Not default     Default       94    0.09403567 0.25 Fold01.Rep1
+svm.tune
+# Resampling results across tuning parameters:
+#   
+#   C     Accuracy   Kappa    
+# 0.25  0.6582040  0.3182430
+# 0.50  0.6572337  0.3166111
+# 1.00  0.6585812  0.3193315
+# 
+# Tuning parameter 'sigma' was held constant at a value
+# of 0.09374442
+# Accuracy was used to select the optimal model using 
+# the largest value.
+# The final values used for the model were sigma =
+#   0.09374442 and C = 1.
+
+# Now we can proceed with the second round by refined the parameter space
+# using the best values of sigma and C
+grid <- expand.grid(sigma = c(0.08, 0.094, 0.1),
+                    C = c(0.7, 0.85, 1, 1.15))
+
+set.seed(555)
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+start.time<-proc.time()
+svm.tune.2 <- train(x=credit.x[,-factor.indexes], y= credit.y, 
+                  method = "svmRadial", tuneGrid = grid)
+end.time<-proc.time()
+time.svm2<- end.time-start.time
+stopCluster(cl)
+
+# SVM Second round results
+time.svm2
+# user   system  elapsed 
+# 24.70     2.50 15790.23
+
+svm.tune.2
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.075 and C = 0.35.
+
+# Now we do the prediction
+pred.test.svm <- predict(svm.tune.2, newdata=credit[credit.test,])
+
+confusionMatrix(pred.test.svm, credit[credit.test,]$default.payment.next.month)
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default         880     483
+# Default             335     824
+# 
+# Accuracy : 0.6757         
+# 95% CI : (0.657, 0.6939)
+# No Information Rate : 0.5182         
+# P-Value [Acc > NIR] : < 2.2e-16      
+# 
+# Kappa : 0.3532         
+# Mcnemar's Test P-Value : 2.751e-07      
+# 
+# Sensitivity : 0.7243         
+# Specificity : 0.6305         
+# Pos Pred Value : 0.6456         
+# Neg Pred Value : 0.7110         
+# Prevalence : 0.4818         
+# Detection Rate : 0.3489         
+# Detection Prevalence : 0.5404         
+# Balanced Accuracy : 0.6774         
+# 
+# 'Positive' Class : Not default   
+
+
+# Results applyng Smote ---------------------------------------------------
+
+# user   system  elapsed 
+# 293.03    14.15 19384.51 # about 5 hours 20 minutes
+
+# Resampling results across tuning parameters:
+#   
+#   C     Accuracy   Kappa    
+# 0.25  0.7549674  0.3058018
+# 0.50  0.7504051  0.3048879
+# 1.00  0.7438309  0.2948801
+# 
+# Tuning parameter 'sigma' was held constant at a value of 0.1141597
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.1141597 and C = 0.25.
+
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        1063     631
+# Default             233     686
+# 
+# Accuracy : 0.6693          
+# 95% CI : (0.6509, 0.6874)
+# No Information Rate : 0.504           
+# P-Value [Acc > NIR] : < 2.2e-16       
+# 
+# Kappa : 0.3403          
+# Mcnemar's Test P-Value : < 2.2e-16       
+#                                           
+#             Sensitivity : 0.8202          
+#             Specificity : 0.5209          
+#          Pos Pred Value : 0.6275          
+#          Neg Pred Value : 0.7465          
+#              Prevalence : 0.4960          
+#          Detection Rate : 0.4068          
+#    Detection Prevalence : 0.6483          
+#       Balanced Accuracy : 0.6705          
+#                                           
+#        'Positive' Class : Not default   
+
+
+# Results with kernlab after tunning --------------------------------------
+credit.svm <- ksvm(default.payment.next.month ~.,
+                   data=credit[credit.train,], kernel='rbfdot', type = "C-svc",
+                   kpar=list(sigma=0.09374442),C=1)
+
+sparsity <-1 - (credit.svm@nSV / dim(credit)[1])
+# [1] 0.7537037
+
+pred.test.svm <- predict(credit.svm, newdata=credit[credit.test,])
+
+confusionMatrix(pred.test.svm, credit[credit.test,]$default.payment.next.month)
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        1024     517
+# Default             272     800
+# 
+# Accuracy : 0.698         
+# 95% CI : (0.68, 0.7156)
+# No Information Rate : 0.504         
+# P-Value [Acc > NIR] : < 2.2e-16     
+# 
+# Kappa : 0.397         
+# Mcnemar's Test P-Value : < 2.2e-16     
+#                                         
+#             Sensitivity : 0.7901        
+#             Specificity : 0.6074        
+#          Pos Pred Value : 0.6645        
+#          Neg Pred Value : 0.7463        
+#              Prevalence : 0.4960        
+#          Detection Rate : 0.3919        
+#    Detection Prevalence : 0.5897        
+#       Balanced Accuracy : 0.6988        
+#                                         
+#        'Positive' Class : Not default
+
+
+#*****************************************************************************
+# Outliers removed, log modulus used, not balanced train and test
+time.svm
+# user  system elapsed 
+# 139.56    2.53 5855.40  #took about 1 hour 36 minutes
+
+head(svm.tune$pred)
+# pred         obs rowIndex     sigma    C    Resample
+# 1 Not default Not default        1 0.1090202 0.25 Fold01.Rep1
+# 2 Not default     Default        7 0.1090202 0.25 Fold01.Rep1
+# 3 Not default Not default       22 0.1090202 0.25 Fold01.Rep1
+# 4 Not default     Default       40 0.1090202 0.25 Fold01.Rep1
+# 5 Not default Not default       51 0.1090202 0.25 Fold01.Rep1
+# 6 Not default Not default       60 0.1090202 0.25 Fold01.Rep1
+svm.tune
+# Tuning parameter 'sigma' was held constant at a value of 0.1090202
+# Accuracy was used to select the optimal model using  the largest value.
+# The final values used for the model were sigma = 0.1090202 and C = 1.
+
+# Now we do the prediction
+pred.test.svm <- predict(svm.tune, newdata=credit[-train,-factor.indexes])
+
+confusionMatrix(pred.test.svm, credit[-train,]$default.payment.next.month)
+# Confusion Matrix and Statistics
+# 
+# Reference
+# Prediction    Not default Default
+# Not default        4464    1126
+# Default             141     209
+# 
+# Accuracy : 0.7867          
+# 95% CI : (0.7761, 0.7971)
+# No Information Rate : 0.7753          
+# P-Value [Acc > NIR] : 0.01751         
+# 
+# Kappa : 0.1706          
+# Mcnemar's Test P-Value : < 2e-16         
+#                                           
+#             Sensitivity : 0.9694          
+#             Specificity : 0.1566          
+#          Pos Pred Value : 0.7986          
+#          Neg Pred Value : 0.5971          
+#              Prevalence : 0.7753          
+#          Detection Rate : 0.7515          
+#    Detection Prevalence : 0.9411          
+#       Balanced Accuracy : 0.5630          
+#                                           
+#        'Positive' Class : Not default 
+
+
+>>>>>>> e04983af40d370ae72ba6b30ba6b71b2c8b2abfe
 # Initial Logistic Regression Model -----------------------------------------------
 
 # Let's start by fitting a Logistic Regression Model with all the variables:
 train <- cbind(credit.x, default = credit.y)
+pay <- c(7,8,9,10,11) 
+# We have not considered all the categorical PAY_* variables unless PAY_0. They have 7 modalities each
+# and they introduce a lot of inestability at the model. 
+train <- train[,-pay]
+
 str(train)
 
 ( logReg <- glm(default ~ ., data = train, family = binomial(link=logit)) )
@@ -105,7 +363,7 @@ summary(logReg)
 # using the step() algorithm which penalizes models based on the AIC value.
 
 # logReg.step <- step(logReg) # Warning: It takes a while
-summary(logReg.step)
+# summary(logReg.step)
 
 # And then refit the model with the optimized model
 
@@ -124,7 +382,6 @@ summary(logReg)
 
 pred <- predict (
   object = logReg,
-  newdata = train,
   type = 'response'
 )
 # We set a probability threshold 'p' from which we will classify an observation to 'Default' 
@@ -138,18 +395,25 @@ predictions[pred < p] <- 0
 # We can compute now the confusion matrix
 
 (tab <- with(credit, table(Truth=train$default,Pred=predictions)))
-(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # ~29 % of training error
+(error.test <- 100*(1-sum(diag(tab))/nrow(train))) # 29.39952 % of training error
 
 # Test error
+test_aux <- credit[credit.test,]
 test <- credit[credit.test,-24]
+<<<<<<< HEAD
+=======
+test <- test[,-pay]
+>>>>>>> e04983af40d370ae72ba6b30ba6b71b2c8b2abfe
 
 # We execute the same process but now using the test data.
 
 pred <- predict (
   object = logReg,
-  newdata = credit[,],
-  type = 'response'
+  newdata = test,
+  type = 'response',
+  na.action = na.pass
 )
+
 
 # We set a probability threshold 'p' from which we will classify an observation to 'Default' 
 # or 'Not Default'.
@@ -161,12 +425,11 @@ predictions[pred < p] <- 0
 
 # We can compute now the confusion matrix for the test data.
 
-(tab <- with(test, table(Truth=default.payment.next.month,Pred=predictions)))
-(error.test <- 100*(1-sum(diag(tab))/nrow(test))) # ~ 17 % of error as well.
+( tab <- table(Truth = test_aux$default.payment.next.month, Pred=predictions) )
+(error.test <- 100*(1-sum(diag(tab))/nrow(test))) # 29.54 % of error as well.
 
 # Training error is very similar to test error, which means that we are probably 
-# not overfitting the dataset with the model. It is lower from the threshold that we initially
-# marked, 22%.
+# not overfitting the dataset with the model.
 
 # Load some libraries to evaluate the binary classifier
 
@@ -178,22 +441,24 @@ library(e1071)
 # the precision and the accuracy of the model. 
 
 levels <- c('Not default', 'Default')
-truth <- test$default.payment.next.month
+truth <- test_aux$default.payment.next.month
 predictions <- as.factor(predictions)
 levels(predictions) <- c('Not default', 'Default')
 
 confusionMatrix(table(truth, predictions))
 
 # Plot the ROC curve
-credit$prob <- pred
-g <- roc(default.payment.next.month ~ prob, data = credit)
+test_aux$prob <- pred
+g <- roc(default.payment.next.month ~ prob, data = test_aux)
 plot(g)
+auc(g)
 
-# Not very good results...
+# Area under the curve: 0.7661
 
 # We saw during the EDA that some of the variables had very skewed distributions. The application
 # of logarithms could help improve our prediction.
 
+<<<<<<< HEAD
 # Support Vector Machine with Radial Basis Function Kernel ------------------------------------------
 
 require(kernlab)
@@ -280,10 +545,14 @@ confusionMatrix(pred.test.svm, credit[credit.test,]$default.payment.next.month)
 #       Balanced Accuracy : 0.6988        
 #                                         
 #        'Positive' Class : Not default
+=======
+>>>>>>> e04983af40d370ae72ba6b30ba6b71b2c8b2abfe
 
 # Neural Networks ------------------------------------------
+
 library(nnet)
 library(devtools)
+
 # Function to plot the neural networks
 source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
 
@@ -293,9 +562,17 @@ source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a5
 train <- cbind(credit.x, default = credit.y)
 test <- credit[credit.test,]
 
+dim(train)
+# [1] 10092    24
+dim(test)
+# [1] 2522   24
+
+
+# Training the neural network. One output layer, one hidden layer with 20 neurons.
 model.nnet <- nnet( default ~ . ,
                    data = train,
-                   size=11,
+                   size=20,
+                   MaxNWts = 2000,
                    maxit=500)
 
 # Output
@@ -311,19 +588,6 @@ model.nnet$residuals
 # Weights
 model.nnet$wts
 
-# As you can see, some weights are large (two orders of magnitude larger then others)
-# This is no good, since it makes the model unstable (ie, small changes in some inputs may
-# entail significant changes in the network, because of the large weights)
-# One way to avoid this is by regularizing (decay parameter).
-
-model.nnet <- nnet( default ~ . ,
-                    data = train,
-                    size=11,
-                    maxit=500,
-                    decay = 0.01)
-
-summary(model.nnet) # Now the weights are more similar.
-
 # Training error. Accuracy: 0.7153
 pred.train <- as.factor(predict (model.nnet, type="class"))
 confusionMatrix(pred.train, train[,24])
@@ -331,6 +595,42 @@ confusionMatrix(pred.train, train[,24])
 # Test error. Accuracy: 0.6987
 pred.test <- as.factor(predict(model.nnet, newdata = test[,-24], type = 'class'))
 confusionMatrix(pred.test, test[,24])
+
+# As you can see, some weights are large (two orders of magnitude larger then others)
+# This is no good, since it makes the model unstable (ie, small changes in some inputs may
+# entail significant changes in the network, because of the large weights)
+# One way to avoid this is by regularizing (decay parameter).
+
+model.nnet <- nnet( default ~ . ,
+                    data = train,
+                    size=20,
+                    MaxNWts = 2000,
+                    maxit=500,
+                    decay = 0.5)
+
+summary(model.nnet) # Now the weights are more similar, and some of them have been converted to 0.
+
+# Training error. Accuracy: 0.7644
+pred.train <- as.factor(predict (model.nnet, type="class"))
+confusionMatrix(pred.train, train[,24])
+
+# Test error. Accuracy: 0.6959
+pred.test <- as.factor(predict(model.nnet, newdata = test[,-24], type = 'class'))
+confusionMatrix(pred.test, test[,24])
+
+pred.test.raw <- predict(model.nnet, newdata = test[,-24], type = 'raw')
+
+pred.test[1:10]
+pred.test.raw[1:10]
+
+names(test)
+
+# Plot the ROC curve
+test$prob <- pred.test.raw
+g <- roc(default.payment.next.month ~ prob, data = test)
+plot(g)
+auc(g)
+# Area under the curve: 0.7615
 
 # Adjustment of the parameters
 
@@ -477,6 +777,12 @@ confusionMatrix(predictions.test, test[,24])
 # Balanced Accuracy : 0.4840          
 # 
 # 'Positive' Class : Not default  
+
+
+# Plot the ROC curve
+test_aux$prob <- pred.test
+g <- roc(default.payment.next.month ~ prob, data = test_aux)
+plot(g)
 
 
 # Random Forests ----------------------------------------------------------
