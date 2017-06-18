@@ -87,8 +87,8 @@ credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 #not balanced
 train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
 
-credit.x <- credit[train,-24]
-credit.y <- credit[train,24]
+credit.x <- credit[credit.train,-24]
+credit.y <- credit[credit.train,24]
 
 # Initial Logistic Regression Model -----------------------------------------------
 
@@ -634,16 +634,14 @@ end.time<-proc.time()
 time.rf<- end.time-start.time
 stopCluster(cl)
 
-#bestmtry <- tuneRF(x=credit.x[,-factor.indexes], y= credit.y, stepFactor=1.5, improve=1e-5, ntree=500)
-
 time.rf
 # user  system elapsed 
-# 43.37    0.86  177.72
+# 19.70    0.40   69.81 
 
 rf.tune
 # Random Forest 
 # 
-# 23760 samples
+# 10453 samples
 # 14 predictor
 # 2 classes: 'Not default', 'Default' 
 # 
@@ -651,42 +649,40 @@ rf.tune
 # Resampling results across tuning parameters:
 #   
 #   mtry  Accuracy   Kappa    
-# 2    0.7917088  0.1902829
-# 8    0.7873737  0.2121606
-# 14    0.7852694  0.2179754
+# 2    0.6662202  0.3323785
+# 8    0.6578016  0.3155175
+# 14    0.6495743  0.2990603
 # 
 # Accuracy was used to select the optimal model using  the largest value.
 # The final value used for the model was mtry = 2.
 
 pred.test.rf <- predict(rf.tune, credit[credit.test,],type="raw")
 confusionMatrix(pred.test.rf, credit[credit.test,]$default.payment.next.month)
-
-# Confusion Matrix and Statistics - with oob
+# Confusion Matrix and Statistics
 # 
 # Reference
 # Prediction    Not default Default
-# Not default        1287     270
-# Default               9    1047
+# Not default         866     497
+# Default             430     820
 # 
-# Accuracy : 0.8932          
-# 95% CI : (0.8808, 0.9048)
+# Accuracy : 0.6452          
+# 95% CI : (0.6265, 0.6636)
 # No Information Rate : 0.504           
-# P-Value [Acc > NIR] : < 2.2e-16       
+# P-Value [Acc > NIR] : < 2e-16         
 # 
-# Kappa : 0.7868          
-# Mcnemar's Test P-Value : < 2.2e-16       
+# Kappa : 0.2907          
+# Mcnemar's Test P-Value : 0.03018         
 # 
-# Sensitivity : 0.9931          
-# Specificity : 0.7950          
-# Pos Pred Value : 0.8266          
-# Neg Pred Value : 0.9915          
+# Sensitivity : 0.6682          
+# Specificity : 0.6226          
+# Pos Pred Value : 0.6354          
+# Neg Pred Value : 0.6560          
 # Prevalence : 0.4960          
-# Detection Rate : 0.4925          
-# Detection Prevalence : 0.5959          
-# Balanced Accuracy : 0.8940          
+# Detection Rate : 0.3314          
+# Detection Prevalence : 0.5216          
+# Balanced Accuracy : 0.6454          
 # 
-# 'Positive' Class : Not default 
-
+# 'Positive' Class : Not default
 
 # Second scenario, using cv method
 rf.train.control<- trainControl(method = "repeatedcv",number = 10,repeats = 5,savePred=TRUE)
@@ -702,68 +698,74 @@ stopCluster(cl)
 
 time.rf 
 # user  system elapsed 
-# 34.92    2.51 3740.32
+# 27.83    1.11 1073.96
 
 head(rf.tune$pred)
+# pred         obs rowIndex mtry    Resample
+# 1     Default     Default       10    2 Fold01.Rep1
+# 2     Default     Default       15    2 Fold01.Rep1
+# 3 Not default Not default       17    2 Fold01.Rep1
+# 4 Not default Not default       20    2 Fold01.Rep1
+# 5 Not default     Default       34    2 Fold01.Rep1
+# 6 Not default     Default       38    2 Fold01.Rep1
 
 rf.tune
 # Random Forest 
 # 
-# 23760 samples
+# 10453 samples
 # 14 predictor
 # 2 classes: 'Not default', 'Default' 
 # 
 # No pre-processing
 # Resampling: Cross-Validated (10 fold, repeated 5 times) 
-# Summary of sample sizes: 21383, 21384, 21384, 21384, 21384, 21384, ... 
+# Summary of sample sizes: 9409, 9408, 9407, 9408, 9407, 9407, ... 
 # Resampling results across tuning parameters:
 #   
 #   mtry  Accuracy   Kappa    
-# 2    0.7917340  0.1856724
-# 8    0.7884933  0.2143070
-# 14    0.7857155  0.2154263
+# 2    0.6640781  0.3280982
+# 8    0.6611882  0.3222877
+# 14    0.6540892  0.3080814
 # 
 # Accuracy was used to select the optimal model using  the largest value.
 # The final value used for the model was mtry = 2.
 
 pred.test.rf <- predict(rf.tune, credit[credit.test,],type="raw")
-confusionMatrix(pred.test.rf, credit[credit.test,]$default.payment.next.month)
-
-# Confusion Matrix and Statistics with cv 10 fold 5 times
+# confusionMatrix(pred.test.rf, credit[credit.test,]$default.payment.next.month)
+# Confusion Matrix and Statistics
 # 
 # Reference
 # Prediction    Not default Default
-# Not default        1286     266
-# Default              10    1051
+# Not default         854     502
+# Default             442     815
 # 
-# Accuracy : 0.8944         
-# 95% CI : (0.882, 0.9059)
-# No Information Rate : 0.504          
-# P-Value [Acc > NIR] : < 2.2e-16      
+# Accuracy : 0.6387        
+# 95% CI : (0.62, 0.6572)
+# No Information Rate : 0.504         
+# P-Value [Acc > NIR] : < 2e-16       
 # 
-# Kappa : 0.7891         
-# Mcnemar's Test P-Value : < 2.2e-16      
-#                                          
-#             Sensitivity : 0.9923         
-#             Specificity : 0.7980         
-#          Pos Pred Value : 0.8286         
-#          Neg Pred Value : 0.9906         
-#              Prevalence : 0.4960         
-#          Detection Rate : 0.4922         
-#    Detection Prevalence : 0.5940         
-#       Balanced Accuracy : 0.8952         
-#                                          
-#        'Positive' Class : Not default
+# Kappa : 0.2777        
+# Mcnemar's Test P-Value : 0.05482       
+# 
+# Sensitivity : 0.6590        
+# Specificity : 0.6188        
+# Pos Pred Value : 0.6298        
+# Neg Pred Value : 0.6484        
+# Prevalence : 0.4960        
+# Detection Rate : 0.3268        
+# Detection Prevalence : 0.5189        
+# Balanced Accuracy : 0.6389        
+# 
+# 'Positive' Class : Not default
 
-#So as we cn see, the values are pretty similar, in this case we prefer the OOB error, because it is not
+#So as we can see, the values are pretty similar, in this case we prefer the OOB error, because it is not
 # as computaional expensive as CV and offers good results
 
-pred.test.rf <- predict(rf.tune, credit[credit.test,],type="prob")
+pred.test.rf <- predict(rf.tune, credit[-train,],type="prob")
 invisible(require(ROCR))
 pred <- prediction(as.data.frame(pred.test.rf)$`Not default`, credit$default.payment.next.month[credit.test])
 roc <- performance(pred,measure="tpr",x.measure="fpr")
 plot(roc, main="ROC curve")
 abline(0,1,col="blue")
 library(pROC)
-auc(roc(credit[credit.test,]$default.payment.next.month, as.data.frame(pred.test.rf)$`Not default`))
+auc(roc(credit[-train,]$default.payment.next.month, as.data.frame(pred.test.rf)$`Not default`))
 # Area under the curve: 0.9718
