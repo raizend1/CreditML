@@ -87,6 +87,9 @@ credit.test <- subset(subsample.index, !(subsample.index %in% credit.train))
 #not balanced
 train <- sample(dim(credit)[1], size = ceiling(dim(credit)[1]*0.8))
 
+credit.x <- credit[train,-24]
+credit.y <- credit[train,24]
+
 # Initial Logistic Regression Model -----------------------------------------------
 
 # Let's start by fitting a Logistic Regression Model with all the variables:
@@ -631,7 +634,7 @@ end.time<-proc.time()
 time.rf<- end.time-start.time
 stopCluster(cl)
 
-bestmtry <- tuneRF(x=credit.x[,-factor.indexes], y= credit.y, stepFactor=1.5, improve=1e-5, ntree=500)
+#bestmtry <- tuneRF(x=credit.x[,-factor.indexes], y= credit.y, stepFactor=1.5, improve=1e-5, ntree=500)
 
 time.rf
 # user  system elapsed 
