@@ -250,7 +250,7 @@ svm.tune
 # Results with kernlab after tunning --------------------------------------
 credit.svm <- ksvm(default.payment.next.month ~.,
                    data=credit[credit.train,], kernel='rbfdot', type = "C-svc",
-                   kpar=list(sigma=0.09374442),C=1)
+                   kpar=list(sigma=0.09374442),C=1,prob.model = TRUE)
 
 sparsity <-1 - (credit.svm@nSV / dim(credit)[1])
 # [1] 0.7537037
@@ -283,6 +283,16 @@ confusionMatrix(pred.test.svm, credit[credit.test,]$default.payment.next.month)
 #       Balanced Accuracy : 0.6988        
 #                                         
 #        'Positive' Class : Not default
+
+pred.test.svm <- predict(credit.svm, newdata=credit[credit.test,],type="prob")
+invisible(require(ROCR))
+pred <- prediction(as.data.frame(pred.test.svm)$`Not default`, credit$default.payment.next.month[credit.test])
+roc <- performance(pred,measure="tpr",x.measure="fpr")
+plot(roc, main="ROC curve")
+abline(0,1,col="blue")
+library(pROC)
+auc(roc(credit[credit.test,]$default.payment.next.month, as.data.frame(pred.test.svm)$`Not default`))
+# Area under the curve: 0.7557
 
 # Neural Networks ------------------------------------------
 
@@ -660,3 +670,13 @@ confusionMatrix(pred.test.rf, credit[credit.test,]$default.payment.next.month)
 
 #So as we cn see, the values are pretty similar, in this case we prefer the OOB error, because it is not
 # as computaional expensive as CV and offers good results
+
+pred.test.rf <- predict(rf.tune, credit[credit.test,],type="prob")
+invisible(require(ROCR))
+pred <- prediction(as.data.frame(pred.test.rf)$`Not default`, credit$default.payment.next.month[credit.test])
+roc <- performance(pred,measure="tpr",x.measure="fpr")
+plot(roc, main="ROC curve")
+abline(0,1,col="blue")
+library(pROC)
+auc(roc(credit[credit.test,]$default.payment.next.month, as.data.frame(pred.test.rf)$`Not default`))
+# Area under the curve: 0.9718
