@@ -1,5 +1,5 @@
 # About the project
-This project uses multivariant methods to discover hidden features, and machine learning techniques to  on the default of credit card clients Data Set. For this process we will use methods from ML from MIRI Masters at UPC.
+This project uses multivariant methods to discover hidden features, and machine learning techniques to  on the default of credit card clients Data Set, from UCI Machine learning repository. For this process we will use methods from ML from MIRI Masters at UPC.
 
 # Methodology 
 The selected language to do the processing is R, with its IDE R Studio. For the plots we will use ggplot and
