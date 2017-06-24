@@ -1,5 +1,30 @@
 # About the project
-This project uses multivariant methods to discover hidden features, and machine learning techniques to  on the default of credit card clients Data Set. For this process we will use methods from ML from MIRI Masters at UPC
+This project uses multivariant methods to discover hidden features, and machine learning techniques to  on the default of credit card clients Data Set. For this process we will use methods from ML from MIRI Masters at UPC.
+
+# Methodology 
+The selected language to do the processing is R, with its IDE R Studio. For the plots we will use ggplot and
+lattice packages. The methodology is sequential, as seen in Machine Learning classes, we first do an exploratory
+analysis of the data to identify how the data is imported into R, the distribution of the values, check for missing
+values, apply dimensionality reduction techniques, then split the dataset into train and test subsets to fit the
+four diferent models (Logistic Regression, Support Vector Machine, Neural Networks and Random Forest) and
+compare their prediction values. For this purposes, we are using the train function from caret[5], to tune the
+parameters, using a 10 fold cross validation method, and then passing the optimal parameters to the desired
+function.
+
+# Files Content
+The preprocessing is done in *Term_ML_MATEU_PEREZ*, *Prediction* contains all the applyed methods and its results, ROC displays the roc curve plot and obtains the AUC of them and *Term_ML_MATEU_PEREZ_utility_functions* contains extra functions used to clean, plot, create latex tables, sample stratify used in this project.
+It is also required a *workingDir.r* archive, that follows the next structure:
+
+path <- *root path of the project*
+dataDir<-glue(path,"/data")
+plotDir<-glue(path,"/plot")
+codeDir<-glue(path,"/code")
+
+*glue* is a function included in Term_ML_MATEU_PEREZ_utility_functions that paste without spaces.
+
+
+# How to use it
+In
 
 # More detailed explanation on dataset used
 This research employed a binary variable, default
@@ -56,3 +81,4 @@ dollar). X18 = amount paid in September, 2005; X19 = amount paid in August,
 
 Y:
 client's behavior; Y=0 then not default, Y=1 then default
+
