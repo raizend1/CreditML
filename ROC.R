@@ -142,16 +142,25 @@ roc4 <- performance(pred.rf,measure="tpr",x.measure="fpr")
 
 
 # Plot ROC Curves and compute AUC values ----------------------------------
-plot(roc1, main="ROC curve", col = 'green') # Logistic Regression
-plot(roc2, add = T, col = 'red') # Neural Networks
-plot(roc3, add = T, col = 'yellow') # Support Vector Machine
-plot(roc4, add = T, col = 'blue') # Random Forest
+lwd = 3
+plot(roc1, main="ROC curve", col = 'green', lwd = lwd) # Logistic Regression
+plot(roc2, add = T, col = 'red', lwd = lwd) # Neural Networks
+plot(roc3, add = T, col = 'orange', lwd = lwd) # Support Vector Machine
+plot(roc4, add = T, col = 'blue', lwd = lwd) # Random Forest
 
-abline(0, 1, 'black')
+abline(0, 1, col = 'gray60', lwd = lwd, lty = 3)
 
-auc(roc(credit[credit.test,]$default.payment.next.month, ))
+# Legend
+legend('right', fill = c('green', 'red', 'orange', 'blue'), c('LogReg', 'NN', 'SVM', 'RF'))
+
+
+# AUC Values
+
+auc(roc(credit[credit.test,]$default.payment.next.month, as.numeric(pred)))
 auc(roc(credit[credit.test,]$default.payment.next.month, as.data.frame(pred.test.svm)$`Not default`))
-auc(roc(credit[credit.test,]$default.payment.next.month, ))
+auc(roc(credit[credit.test,]$default.payment.next.month, as.numeric(pred.test.nnet)))
 auc(roc(credit[credit.test,]$default.payment.next.month, as.data.frame(pred.test.rf)$`Not default`))
+
+
 
 
